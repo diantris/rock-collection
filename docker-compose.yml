@@ -1,0 +1,30 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    container_name: rockcollection-db
+    environment:
+      POSTGRES_DB: rockdb
+      POSTGRES_USER: rockuser
+      POSTGRES_PASSWORD: rockpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  api:
+    build: ./rock-collection-backend
+    container_name: rockcollection-api
+    depends_on:
+      - db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/rockdb
+      SPRING_DATASOURCE_USERNAME: rockuser
+      SPRING_DATASOURCE_PASSWORD: rockpass
+    ports:
+      - "8080:8080"
+    restart: on-failure
+
+volumes:
+  db_data:
+
