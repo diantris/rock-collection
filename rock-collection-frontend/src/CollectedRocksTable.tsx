@@ -234,12 +234,14 @@ const CollectedRocksTable: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
-      <Button variant="contained" color="primary" sx={{ mt: 3 }} onClick={handleOpen}>
-        + Add a rock
-      </Button>
-      <Button variant="outlined" color="secondary" sx={{ mt: 2, mr: 2 }} onClick={handleOpenGroup}>
-        + Add a group
-      </Button>
+      <Box display="flex" flexDirection="row" alignItems="center" gap={2} sx={{ mt: 3 }}>
+        <Button variant="contained" color="primary" onClick={handleOpen}>
+          + Add a rock
+        </Button>
+        <Button variant="contained" color="primary" onClick={handleOpenGroup}>
+          + Add a group
+        </Button>
+      </Box>
       <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
         <DialogTitle>Add a new rock</DialogTitle>
         <DialogContent>
