@@ -31,7 +31,14 @@ public class RockController {
      */
     @GetMapping
     public List<Map<String, Object>> getRocks(@RequestParam(defaultValue = "0") int page) {
-        return rockService.getRocks(page);
+        List<Map<String, Object>> rocks = rockService.getRocks(page);
+        // Add ID to each map for frontend use
+        for (Map<String, Object> rock : rocks) {
+            if (rock.get("id") == null && rock.containsKey("_id")) {
+                rock.put("id", rock.get("_id"));
+            }
+        }
+        return rocks;
     }
 
     /**
@@ -41,7 +48,12 @@ public class RockController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getRockById(@PathVariable Long id) {
-        return rockService.getRockById(id);
+        ResponseEntity<Map<String, Object>> response = rockService.getRockById(id);
+        if (response.getBody() != null && !response.getBody().containsKey("id")) {
+            Map<String, Object> body = response.getBody();
+            body.put("id", id);
+        }
+        return response;
     }
 
     /**

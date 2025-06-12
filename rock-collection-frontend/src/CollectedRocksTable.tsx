@@ -24,6 +24,7 @@ import {
 
 // TypeScript interface for a collected rock object
 interface CollectedRock {
+  id: number; // Now required, always present from backend
   name: string;
   market_name: string;
   group_name: string;
@@ -67,6 +68,11 @@ const CollectedRocksTable: React.FC = () => {
   const [groupForm, setGroupForm] = useState({ groupName: '', family: '', type: '', mohsHardness: '', color: '', streak: '', luster: '', cleavageFracture: '', crystalForm: '', density: '', transparency: '', magnetism: '', notableCharacteristics: '' });
   const [addingGroup, setAddingGroup] = useState(false);
   const [addGroupError, setAddGroupError] = useState<string | null>(null);
+  const [selectedRockIdx, setSelectedRockIdx] = useState<number | null>(null);
+  const [showDeleteAction, setShowDeleteAction] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     // Fetch the list of collected rocks from the backend API
@@ -208,6 +214,7 @@ const CollectedRocksTable: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow sx={{ backgroundColor: '#1976d2' }}>
+              <TableCell sx={{ backgroundColor: '#1976d2', width: 48 }} />
               {columns.map((col) => (
                 <TableCell key={col.key} sx={{ color: 'white', fontWeight: 'bold', fontSize: '1.25rem' }}>
                   <TableSortLabel
@@ -224,7 +231,23 @@ const CollectedRocksTable: React.FC = () => {
           </TableHead>
           <TableBody>
             {sortedRocks.map((rock, idx) => (
-              <TableRow key={rock.name + rock.origin + idx} hover>
+              <TableRow key={rock.id} hover>
+                <TableCell padding="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={selectedRockIdx === idx}
+                    onChange={e => {
+                      if (e.target.checked) {
+                        setSelectedRockIdx(idx);
+                        setShowDeleteAction(true);
+                      } else {
+                        setSelectedRockIdx(null);
+                        setShowDeleteAction(false);
+                      }
+                    }}
+                    aria-label="select rock"
+                  />
+                </TableCell>
                 <TableCell>{rock.name}</TableCell>
                 <TableCell>{rock.market_name}</TableCell>
                 <TableCell>{rock.group_name}</TableCell>
@@ -234,14 +257,65 @@ const CollectedRocksTable: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
-      <Box display="flex" flexDirection="row" alignItems="center" gap={2} sx={{ mt: 3 }}>
-        <Button variant="contained" color="primary" onClick={handleOpen}>
-          + Add a rock
-        </Button>
-        <Button variant="contained" color="primary" onClick={handleOpenGroup}>
-          + Add a group
-        </Button>
-      </Box>
+      {/* Context action for deleting rock */}
+      {showDeleteAction && selectedRockIdx !== null && (
+        <Box display="flex" alignItems="center" sx={{ mt: 2 }}>
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={() => setDeleteDialogOpen(true)}
+            sx={{ textTransform: 'none', fontWeight: 600 }}
+          >
+            Delete rock
+          </Button>
+        </Box>
+      )}
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Are you sure you want to delete this rock?</DialogTitle>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>No</Button>
+          <Button
+            onClick={async () => {
+              if (selectedRockIdx === null) return;
+              setDeleting(true);
+              setDeleteError(null);
+              try {
+                const rock = sortedRocks[selectedRockIdx];
+                // Use the rock's id for deletion
+                if (!rock.id) throw new Error('Rock ID not found');
+                const res = await fetch(`/api/rocks/${rock.id}`, {
+                  method: 'DELETE',
+                });
+                if (!res.ok) throw new Error('Failed to delete rock');
+                // Refresh rocks
+                setLoading(true);
+                fetch('/api/rocks')
+                  .then(async (res) => {
+                    if (!res.ok) throw new Error('Failed to fetch');
+                    return await res.json();
+                  })
+                  .then(setRocks)
+                  .catch((err) => setError(err.message))
+                  .finally(() => setLoading(false));
+                setSelectedRockIdx(null);
+                setShowDeleteAction(false);
+                setDeleteDialogOpen(false);
+              } catch (e: any) {
+                setDeleteError(e.message);
+              } finally {
+                setDeleting(false);
+              }
+            }}
+            color="error"
+            variant="contained"
+            disabled={deleting}
+          >
+            Yes
+          </Button>
+        </DialogActions>
+        {deleteError && <Alert severity="error" sx={{ m: 2 }}>{deleteError}</Alert>}
+      </Dialog>
       <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
         <DialogTitle>Add a new rock</DialogTitle>
         <DialogContent>
@@ -321,6 +395,14 @@ const CollectedRocksTable: React.FC = () => {
           </Button>
         </DialogActions>
         </Dialog>
+      <Box display="flex" flexDirection="row" alignItems="center" gap={2} sx={{ mt: 3 }}>
+        <Button variant="contained" color="primary" onClick={handleOpen}>
+          + Add a rock
+        </Button>
+        <Button variant="contained" color="primary" onClick={handleOpenGroup}>
+          + Add a group
+        </Button>
+      </Box>
     </>
     );
 }

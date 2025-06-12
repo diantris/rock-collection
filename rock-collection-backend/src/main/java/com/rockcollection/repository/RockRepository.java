@@ -26,6 +26,7 @@ public class RockRepository {
         List<Map<String, Object>> result = new ArrayList<>();
         for (CollectedRock rock : rocks) {
             Map<String, Object> map = new HashMap<>();
+            map.put("id", rock.getId()); // Add ID for frontend
             map.put("name", rock.getRockName());
             map.put("market_name", rock.getMarketName());
             map.put("group_name", rock.getGroup() != null ? rock.getGroup().getGroupName() : null);
@@ -43,6 +44,7 @@ public class RockRepository {
     public Optional<Map<String, Object>> fetchRockById(Long id) {
         return collectedRockRepository.findById(id).map(rock -> {
             Map<String, Object> map = new HashMap<>();
+            map.put("id", rock.getId()); // Add ID for frontend
             map.put("name", rock.getRockName());
             map.put("market_name", rock.getMarketName());
             map.put("origin", rock.getOrigin());
