@@ -1,3 +1,4 @@
+// RockGroupProperties.java - Entity representing group properties for a rock
 package com.rockcollection.model;
 
 import jakarta.persistence.*;
@@ -8,14 +9,17 @@ import java.util.Set;
 @Entity
 @Table(name = "rock_group_properties")
 public class RockGroupProperties {
+    // Unique identifier for the group
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Name of the group (required)
     @NotNull(message = "groupName is required")
     @Size(min = 1, message = "groupName cannot be empty")
     @Column(name = "group_name", nullable = false)
     private String groupName;
+    // Family, type, and other mineralogical properties
     private String family;
     private String type;
     @Column(name = "mohs_hardness")
@@ -63,3 +67,4 @@ public class RockGroupProperties {
     public String getNotableCharacteristics() { return notableCharacteristics; }
     public void setNotableCharacteristics(String notableCharacteristics) { this.notableCharacteristics = notableCharacteristics; }
 }
+// End of RockGroupProperties.java

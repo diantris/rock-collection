@@ -1,9 +1,14 @@
+// Rock.java - Simple POJO representing a rock (not a JPA entity)
 package com.rockcollection.model;
 
 public class Rock {
+    // Unique identifier for the rock
     private Long id;
+    // Name of the rock
     private String name;
+    // Type of the rock (e.g., igneous, sedimentary, metamorphic)
     private String type;
+    // Description of the rock
     private String description;
 
     public Rock() {}
@@ -24,4 +29,4 @@ public class Rock {
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
 }
-
+// End of Rock.java
