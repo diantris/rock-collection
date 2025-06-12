@@ -63,6 +63,10 @@ const CollectedRocksTable: React.FC = () => {
   });
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  const [openGroup, setOpenGroup] = useState(false);
+  const [groupForm, setGroupForm] = useState({ groupName: '', family: '', type: '', mohsHardness: '', color: '', streak: '', luster: '', cleavageFracture: '', crystalForm: '', density: '', transparency: '', magnetism: '', notableCharacteristics: '' });
+  const [addingGroup, setAddingGroup] = useState(false);
+  const [addGroupError, setAddGroupError] = useState<string | null>(null);
 
   useEffect(() => {
     // Fetch the list of collected rocks from the backend API
@@ -152,6 +156,45 @@ const CollectedRocksTable: React.FC = () => {
     }
   };
 
+  const handleOpenGroup = () => {
+    setGroupForm({ groupName: '', family: '', type: '', mohsHardness: '', color: '', streak: '', luster: '', cleavageFracture: '', crystalForm: '', density: '', transparency: '', magnetism: '', notableCharacteristics: '' });
+    setAddGroupError(null);
+    setOpenGroup(true);
+  };
+  const handleCloseGroup = () => setOpenGroup(false);
+  const handleGroupFormChange = (field: string, value: any) => {
+    setGroupForm((prev) => ({ ...prev, [field]: value }));
+  };
+  const handleAddGroup = async () => {
+    if (!groupForm.groupName) {
+      setAddGroupError('Group Name is required.');
+      return;
+    }
+    setAddingGroup(true);
+    setAddGroupError(null);
+    try {
+      const res = await fetch('/api/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(groupForm)
+      });
+      if (!res.ok) throw new Error('Failed to add group');
+      setOpenGroup(false);
+      setGroupForm({ groupName: '', family: '', type: '', mohsHardness: '', color: '', streak: '', luster: '', cleavageFracture: '', crystalForm: '', density: '', transparency: '', magnetism: '', notableCharacteristics: '' });
+      // Refresh groups for the combobox if open
+      if (open) {
+        fetch('/api/groups')
+          .then(res => res.json())
+          .then(setGroups)
+          .catch(() => setGroups([]));
+      }
+    } catch (e: any) {
+      setAddGroupError(e.message);
+    } finally {
+      setAddingGroup(false);
+    }
+  };
+
   if (loading) return (
     <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
       <CircularProgress />
@@ -193,6 +236,9 @@ const CollectedRocksTable: React.FC = () => {
       </TableContainer>
       <Button variant="contained" color="primary" sx={{ mt: 3 }} onClick={handleOpen}>
         + Add a rock
+      </Button>
+      <Button variant="outlined" color="secondary" sx={{ mt: 2, mr: 2 }} onClick={handleOpenGroup}>
+        + Add a group
       </Button>
       <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
         <DialogTitle>Add a new rock</DialogTitle>
@@ -238,9 +284,44 @@ const CollectedRocksTable: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      <Dialog open={openGroup} onClose={handleCloseGroup} maxWidth="sm" fullWidth>
+        <DialogTitle>Add a new rock group</DialogTitle>
+        <DialogContent>
+          <TextField label="Group Name" value={groupForm.groupName} onChange={e => handleGroupFormChange('groupName', e.target.value)} fullWidth margin="normal" required />
+          <TextField label="Family" value={groupForm.family} onChange={e => handleGroupFormChange('family', e.target.value)} fullWidth margin="normal" />
+          <TextField label="Type" value={groupForm.type} onChange={e => handleGroupFormChange('type', e.target.value)} fullWidth margin="normal" />
+          <TextField label="Mohs Hardness" value={groupForm.mohsHardness} onChange={e => handleGroupFormChange('mohsHardness', e.target.value)} fullWidth margin="normal" />
+          <TextField label="Color" value={groupForm.color} onChange={e => handleGroupFormChange('color', e.target.value)} fullWidth margin="normal" />
+          <TextField label="Streak" value={groupForm.streak} onChange={e => handleGroupFormChange('streak', e.target.value)} fullWidth margin="normal" />
+          <TextField label="Luster" value={groupForm.luster} onChange={e => handleGroupFormChange('luster', e.target.value)} fullWidth margin="normal" />
+          <TextField label="Cleavage/Fracture" value={groupForm.cleavageFracture} onChange={e => handleGroupFormChange('cleavageFracture', e.target.value)} fullWidth margin="normal" />
+          <TextField label="Crystal Form" value={groupForm.crystalForm} onChange={e => handleGroupFormChange('crystalForm', e.target.value)} fullWidth margin="normal" />
+          <TextField label="Density" value={groupForm.density} onChange={e => handleGroupFormChange('density', e.target.value)} fullWidth margin="normal" />
+          <TextField label="Transparency" value={groupForm.transparency} onChange={e => handleGroupFormChange('transparency', e.target.value)} fullWidth margin="normal" />
+          {/* Magnetism as a checkbox instead of text field */}
+          <Box display="flex" alignItems="center" sx={{ mt: 2, mb: 1 }}>
+            <input
+              type="checkbox"
+              id="magnetism-checkbox"
+              checked={Boolean(groupForm.magnetism)}
+              onChange={e => handleGroupFormChange('magnetism', e.target.checked)}
+              style={{ marginRight: 8 }}
+            />
+            <label htmlFor="magnetism-checkbox" style={{ fontSize: '1rem' }}>Magnetism</label>
+          </Box>
+          <TextField label="Notable Characteristics" value={groupForm.notableCharacteristics} onChange={e => handleGroupFormChange('notableCharacteristics', e.target.value)} fullWidth margin="normal" />
+            {addGroupError && <Alert severity="error" sx={{ mt: 2 }}>{addGroupError}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseGroup} disabled={addingGroup}>Cancel</Button>
+          <Button onClick={handleAddGroup} variant="contained" disabled={addingGroup}>
+            Add
+          </Button>
+        </DialogActions>
+        </Dialog>
     </>
-  );
-};
+    );
+}
 
 export default CollectedRocksTable;
 // End of CollectedRocksTable.tsx

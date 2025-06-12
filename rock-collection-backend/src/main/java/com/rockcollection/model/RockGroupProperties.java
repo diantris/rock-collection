@@ -33,7 +33,7 @@ public class RockGroupProperties {
     private String crystalForm;
     private String density;
     private String transparency;
-    private String magnetism;
+    private Boolean magnetism;
     @Column(name = "notable_characteristics")
     private String notableCharacteristics;
 
@@ -62,8 +62,8 @@ public class RockGroupProperties {
     public void setDensity(String density) { this.density = density; }
     public String getTransparency() { return transparency; }
     public void setTransparency(String transparency) { this.transparency = transparency; }
-    public String getMagnetism() { return magnetism; }
-    public void setMagnetism(String magnetism) { this.magnetism = magnetism; }
+    public Boolean getMagnetism() { return magnetism; }
+    public void setMagnetism(Boolean magnetism) { this.magnetism = magnetism; }
     public String getNotableCharacteristics() { return notableCharacteristics; }
     public void setNotableCharacteristics(String notableCharacteristics) { this.notableCharacteristics = notableCharacteristics; }
 }
