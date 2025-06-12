@@ -172,13 +172,6 @@ const CollectedRocksTable: React.FC = () => {
                     direction={sortBy === col.key ? order : 'asc'}
                     onClick={() => handleSort(col.key)}
                     sx={{ color: 'white', '&.Mui-active': { color: 'white' }, fontSize: '1.25rem' }}
-                    IconComponent={() => (
-                      <>
-                        <span style={{ fontSize: 18, verticalAlign: 'middle' }}>▲</span>
-                        <span style={{ fontSize: 18, verticalAlign: 'middle', marginLeft: -4 }}>▼</span>
-                      </>
-                    )}
-                    componentsProps={{ label: { style: { marginRight: 8 } } }}
                   >
                     <span style={{ marginRight: 8 }}>{col.label}</span>
                   </TableSortLabel>
