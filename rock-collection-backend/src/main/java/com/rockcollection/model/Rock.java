@@ -1,4 +1,4 @@
-package com.rockcollection;
+package com.rockcollection.model;
 
 public class Rock {
     private Long id;

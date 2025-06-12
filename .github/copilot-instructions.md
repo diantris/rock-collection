@@ -1,15 +1,16 @@
 # GitHub Copilot Project Instructions
 
 ## Project Name
-Rock Collection Backend
+Rock Collection
 
 ## Description
-This is a Java backend project for managing a rock collection, built with Maven and OpenJDK 17. The main entry point is `com.rockcollection.Application`. The project uses a standard Maven structure and is containerized with Docker.
+This is a project for managing a rock collection, built with:
+- Java backend using Maven and OpenJDK 17. The project uses a standard Maven structure.
+- TypeScript frontend using React.
+The project is containerized with Docker.
 
 ## Guidelines for Copilot
-- Use Java 17 features where appropriate.
-- Follow standard Maven project structure and conventions.
-- Ensure code is clean, well-documented, and follows Java best practices.
+- Ensure code is clean and well-documented.
 - Always add comments.
 - Use meaningful and descriptive names for variables, methods, functions, and classes.
 - Use dependency injection and avoid hardcoding values.
@@ -19,9 +20,16 @@ This is a Java backend project for managing a rock collection, built with Maven 
 - Use `application.properties` for configuration.
 - Prefer open-source libraries for common tasks.
 - Write meaningful commit messages and keep code modular.
+For backend:
+- Use Java 17 features where appropriate.
+- Follow standard Maven project structure and conventions.
+- Ensure code follows Java best practices.
+For frontend:
+- Use TypeScript for type safety.
 
 ## Preferred Libraries
 - Spring Boot (if adding frameworks)
+- Hibernate for ORM
 - Jackson for JSON processing
 - JUnit for testing
 
