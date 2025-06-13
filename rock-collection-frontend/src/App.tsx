@@ -5,8 +5,7 @@ import CollectedRocksTable from './CollectedRocksTable'; // Table component for 
 const App: React.FC = () => {
   return (
     <div>
-      <h1>Collected Rocks</h1>
-      {/* Render the table of collected rocks */}
+      {/* Render the table of collected rocks (header is inside the table component) */}
       <CollectedRocksTable />
     </div>
   );

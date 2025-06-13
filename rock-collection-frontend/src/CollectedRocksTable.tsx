@@ -21,6 +21,8 @@ import {
   TextField,
   Autocomplete
 } from '@mui/material';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTrash } from '@fortawesome/free-solid-svg-icons';
 
 // TypeScript interface for a collected rock object
 interface CollectedRock {
@@ -210,11 +212,23 @@ const CollectedRocksTable: React.FC = () => {
 
   return (
     <>
+      {/* Header */}
+      <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 2 }}>
+        Collected Rocks
+      </Typography>
+      {/* Action buttons below header, left-aligned */}
+      <Box display="flex" flexDirection="row" gap={2} mb={2}>
+        <Button variant="contained" color="primary" onClick={handleOpen} sx={{ textTransform: 'none', fontWeight: 600 }}>
+          Add a rock
+        </Button>
+        <Button variant="contained" color="primary" onClick={handleOpenGroup} sx={{ textTransform: 'none', fontWeight: 600 }}>
+          Add a group
+        </Button>
+      </Box>
       <TableContainer component={Paper} sx={{ mt: 2, boxShadow: 3, borderRadius: 2 }}>
         <Table>
           <TableHead>
             <TableRow sx={{ backgroundColor: '#1976d2' }}>
-              <TableCell sx={{ backgroundColor: '#1976d2', width: 48 }} />
               {columns.map((col) => (
                 <TableCell key={col.key} sx={{ color: 'white', fontWeight: 'bold', fontSize: '1.25rem' }}>
                   <TableSortLabel
@@ -227,49 +241,35 @@ const CollectedRocksTable: React.FC = () => {
                   </TableSortLabel>
                 </TableCell>
               ))}
+              {/* FontAwesome bin column header */}
+              <TableCell sx={{ backgroundColor: '#1976d2', width: 48 }} />
             </TableRow>
           </TableHead>
           <TableBody>
             {sortedRocks.map((rock, idx) => (
               <TableRow key={rock.id} hover>
-                <TableCell padding="checkbox">
-                  <input
-                    type="checkbox"
-                    checked={selectedRockIdx === idx}
-                    onChange={e => {
-                      if (e.target.checked) {
-                        setSelectedRockIdx(idx);
-                        setShowDeleteAction(true);
-                      } else {
-                        setSelectedRockIdx(null);
-                        setShowDeleteAction(false);
-                      }
-                    }}
-                    aria-label="select rock"
-                  />
-                </TableCell>
                 <TableCell>{rock.name}</TableCell>
                 <TableCell>{rock.market_name}</TableCell>
                 <TableCell>{rock.group_name}</TableCell>
                 <TableCell>{rock.origin}</TableCell>
+                {/* FontAwesome bin icon column */}
+                <TableCell align="center">
+                  <FontAwesomeIcon
+                    icon={faTrash}
+                    style={{ cursor: 'pointer', color: '#8B0000' }}
+                    title="Delete rock"
+                    onClick={() => {
+                      setSelectedRockIdx(idx);
+                      setShowDeleteAction(true);
+                      setDeleteDialogOpen(true);
+                    }}
+                  />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
-      {/* Context action for deleting rock */}
-      {showDeleteAction && selectedRockIdx !== null && (
-        <Box display="flex" alignItems="center" sx={{ mt: 2 }}>
-          <Button
-            variant="outlined"
-            color="error"
-            onClick={() => setDeleteDialogOpen(true)}
-            sx={{ textTransform: 'none', fontWeight: 600 }}
-          >
-            Delete rock
-          </Button>
-        </Box>
-      )}
       {/* Delete confirmation dialog */}
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
         <DialogTitle>Are you sure you want to delete this rock?</DialogTitle>
@@ -395,14 +395,6 @@ const CollectedRocksTable: React.FC = () => {
           </Button>
         </DialogActions>
         </Dialog>
-      <Box display="flex" flexDirection="row" alignItems="center" gap={2} sx={{ mt: 3 }}>
-        <Button variant="contained" color="primary" onClick={handleOpen}>
-          + Add a rock
-        </Button>
-        <Button variant="contained" color="primary" onClick={handleOpenGroup}>
-          + Add a group
-        </Button>
-      </Box>
     </>
     );
 }
