@@ -23,9 +23,15 @@ import {
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash } from '@fortawesome/free-solid-svg-icons';
+import CollectedRocksTableHeader from './CollectedRocksTableHeader';
+import CollectedRockRow from './CollectedRockRow';
+import DeleteRockDialog from './DeleteRockDialog';
+import AddRockDialog from './AddRockDialog';
+import AddGroupDialog from './AddGroupDialog';
+import { sortRocks, fetchRocks, fetchGroups, addRock, addGroup, deleteRock } from './rockUtils';
 
 // TypeScript interface for a collected rock object
-interface CollectedRock {
+export interface CollectedRock {
   id: number; // Now required, always present from backend
   name: string;
   market_name: string;
@@ -33,14 +39,14 @@ interface CollectedRock {
   origin: string;
 }
 
-interface RockGroup {
+export interface RockGroup {
   id: number;
   groupName: string;
 }
 
-type Order = 'asc' | 'desc';
+export type Order = 'asc' | 'desc';
 
-type SortKey = keyof CollectedRock;
+export type SortKey = keyof CollectedRock;
 
 const columns: { key: SortKey; label: string }[] = [
   { key: 'name', label: 'Name' },
@@ -77,12 +83,7 @@ const CollectedRocksTable: React.FC = () => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Fetch the list of collected rocks from the backend API
-    fetch('/api/rocks')
-      .then(async (res) => {
-        if (!res.ok) throw new Error('Failed to fetch');
-        return await res.json();
-      })
+    fetchRocks()
       .then(setRocks)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -91,8 +92,7 @@ const CollectedRocksTable: React.FC = () => {
   // Fetch groups for combobox
   useEffect(() => {
     if (open) {
-      fetch('/api/groups')
-        .then(res => res.json())
+      fetchGroups()
         .then(setGroups)
         .catch(() => setGroups([]));
     }
@@ -107,13 +107,7 @@ const CollectedRocksTable: React.FC = () => {
     }
   };
 
-  const sortedRocks = [...rocks].sort((a, b) => {
-    const aValue = a[sortBy]?.toString().toLowerCase() || '';
-    const bValue = b[sortBy]?.toString().toLowerCase() || '';
-    if (aValue < bValue) return order === 'asc' ? -1 : 1;
-    if (aValue > bValue) return order === 'asc' ? 1 : -1;
-    return 0;
-  });
+  const sortedRocks = sortRocks(rocks, sortBy, order);
 
   const handleOpen = () => {
     setForm({ name: '', market_name: '', origin: '', group: null });
@@ -127,33 +121,14 @@ const CollectedRocksTable: React.FC = () => {
   };
 
   const handleAdd = async () => {
-    if (!form.name || !form.group) {
-      setAddError('Name and Group are required.');
-      return;
-    }
-    setAdding(true);
-    setAddError(null);
     try {
-      const res = await fetch('/api/rocks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rockName: form.name,
-          marketName: form.market_name,
-          origin: form.origin,
-          group: { id: form.group.id }
-        })
-      });
-      if (!res.ok) throw new Error('Failed to add rock');
+      setAdding(true);
+      setAddError(null);
+      await addRock(form);
       setOpen(false);
       setForm({ name: '', market_name: '', origin: '', group: null });
-      // Refresh rocks
       setLoading(true);
-      fetch('/api/rocks')
-        .then(async (res) => {
-          if (!res.ok) throw new Error('Failed to fetch');
-          return await res.json();
-        })
+      fetchRocks()
         .then(setRocks)
         .catch((err) => setError(err.message))
         .finally(() => setLoading(false));
@@ -174,25 +149,14 @@ const CollectedRocksTable: React.FC = () => {
     setGroupForm((prev) => ({ ...prev, [field]: value }));
   };
   const handleAddGroup = async () => {
-    if (!groupForm.groupName) {
-      setAddGroupError('Group Name is required.');
-      return;
-    }
-    setAddingGroup(true);
-    setAddGroupError(null);
     try {
-      const res = await fetch('/api/groups', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(groupForm)
-      });
-      if (!res.ok) throw new Error('Failed to add group');
+      setAddingGroup(true);
+      setAddGroupError(null);
+      await addGroup(groupForm);
       setOpenGroup(false);
       setGroupForm({ groupName: '', family: '', type: '', mohsHardness: '', color: '', streak: '', luster: '', cleavageFracture: '', crystalForm: '', density: '', transparency: '', magnetism: '', notableCharacteristics: '' });
-      // Refresh groups for the combobox if open
       if (open) {
-        fetch('/api/groups')
-          .then(res => res.json())
+        fetchGroups()
           .then(setGroups)
           .catch(() => setGroups([]));
       }
@@ -227,174 +191,75 @@ const CollectedRocksTable: React.FC = () => {
       </Box>
       <TableContainer component={Paper} sx={{ mt: 2, boxShadow: 3, borderRadius: 2 }}>
         <Table>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: '#1976d2' }}>
-              {columns.map((col) => (
-                <TableCell key={col.key} sx={{ color: 'white', fontWeight: 'bold', fontSize: '1.25rem' }}>
-                  <TableSortLabel
-                    active={sortBy === col.key}
-                    direction={sortBy === col.key ? order : 'asc'}
-                    onClick={() => handleSort(col.key)}
-                    sx={{ color: 'white', '&.Mui-active': { color: 'white' }, fontSize: '1.25rem' }}
-                  >
-                    <span style={{ marginRight: 8 }}>{col.label}</span>
-                  </TableSortLabel>
-                </TableCell>
-              ))}
-              {/* FontAwesome bin column header */}
-              <TableCell sx={{ backgroundColor: '#1976d2', width: 48 }} />
-            </TableRow>
-          </TableHead>
+          <CollectedRocksTableHeader
+            columns={columns}
+            sortBy={sortBy}
+            order={order}
+            onSort={handleSort}
+          />
           <TableBody>
             {sortedRocks.map((rock, idx) => (
-              <TableRow key={rock.id} hover>
-                <TableCell>{rock.name}</TableCell>
-                <TableCell>{rock.market_name}</TableCell>
-                <TableCell>{rock.group_name}</TableCell>
-                <TableCell>{rock.origin}</TableCell>
-                {/* FontAwesome bin icon column */}
-                <TableCell align="center">
-                  <FontAwesomeIcon
-                    icon={faTrash}
-                    style={{ cursor: 'pointer', color: '#8B0000' }}
-                    title="Delete rock"
-                    onClick={() => {
-                      setSelectedRockIdx(idx);
-                      setShowDeleteAction(true);
-                      setDeleteDialogOpen(true);
-                    }}
-                  />
-                </TableCell>
-              </TableRow>
+              <CollectedRockRow
+                key={rock.id}
+                rock={rock}
+                onDelete={() => {
+                  setSelectedRockIdx(idx);
+                  setShowDeleteAction(true);
+                  setDeleteDialogOpen(true);
+                }}
+              />
             ))}
           </TableBody>
         </Table>
       </TableContainer>
       {/* Delete confirmation dialog */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>Are you sure you want to delete this rock?</DialogTitle>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>No</Button>
-          <Button
-            onClick={async () => {
-              if (selectedRockIdx === null) return;
-              setDeleting(true);
-              setDeleteError(null);
-              try {
-                const rock = sortedRocks[selectedRockIdx];
-                // Use the rock's id for deletion
-                if (!rock.id) throw new Error('Rock ID not found');
-                const res = await fetch(`/api/rocks/${rock.id}`, {
-                  method: 'DELETE',
-                });
-                if (!res.ok) throw new Error('Failed to delete rock');
-                // Refresh rocks
-                setLoading(true);
-                fetch('/api/rocks')
-                  .then(async (res) => {
-                    if (!res.ok) throw new Error('Failed to fetch');
-                    return await res.json();
-                  })
-                  .then(setRocks)
-                  .catch((err) => setError(err.message))
-                  .finally(() => setLoading(false));
-                setSelectedRockIdx(null);
-                setShowDeleteAction(false);
-                setDeleteDialogOpen(false);
-              } catch (e: any) {
-                setDeleteError(e.message);
-              } finally {
-                setDeleting(false);
-              }
-            }}
-            color="error"
-            variant="contained"
-            disabled={deleting}
-          >
-            Yes
-          </Button>
-        </DialogActions>
-        {deleteError && <Alert severity="error" sx={{ m: 2 }}>{deleteError}</Alert>}
-      </Dialog>
-      <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-        <DialogTitle>Add a new rock</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="Name"
-            value={form.name}
-            onChange={e => handleFormChange('name', e.target.value)}
-            fullWidth
-            margin="normal"
-            required
-          />
-          <TextField
-            label="Market Name"
-            value={form.market_name}
-            onChange={e => handleFormChange('market_name', e.target.value)}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            label="Origin"
-            value={form.origin}
-            onChange={e => handleFormChange('origin', e.target.value)}
-            fullWidth
-            margin="normal"
-          />
-          <Autocomplete
-            options={groups}
-            getOptionLabel={option => option.groupName}
-            value={form.group}
-            onChange={(_, value) => handleFormChange('group', value)}
-            renderInput={params => (
-              <TextField {...params} label="Group Name" margin="normal" required />
-            )}
-            isOptionEqualToValue={(option, value) => option.id === value.id}
-          />
-          {addError && <Alert severity="error" sx={{ mt: 2 }}>{addError}</Alert>}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose} disabled={adding}>Cancel</Button>
-          <Button onClick={handleAdd} variant="contained" disabled={adding}>
-            Add
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <Dialog open={openGroup} onClose={handleCloseGroup} maxWidth="sm" fullWidth>
-        <DialogTitle>Add a new rock group</DialogTitle>
-        <DialogContent>
-          <TextField label="Group Name" value={groupForm.groupName} onChange={e => handleGroupFormChange('groupName', e.target.value)} fullWidth margin="normal" required />
-          <TextField label="Family" value={groupForm.family} onChange={e => handleGroupFormChange('family', e.target.value)} fullWidth margin="normal" />
-          <TextField label="Type" value={groupForm.type} onChange={e => handleGroupFormChange('type', e.target.value)} fullWidth margin="normal" />
-          <TextField label="Mohs Hardness" value={groupForm.mohsHardness} onChange={e => handleGroupFormChange('mohsHardness', e.target.value)} fullWidth margin="normal" />
-          <TextField label="Color" value={groupForm.color} onChange={e => handleGroupFormChange('color', e.target.value)} fullWidth margin="normal" />
-          <TextField label="Streak" value={groupForm.streak} onChange={e => handleGroupFormChange('streak', e.target.value)} fullWidth margin="normal" />
-          <TextField label="Luster" value={groupForm.luster} onChange={e => handleGroupFormChange('luster', e.target.value)} fullWidth margin="normal" />
-          <TextField label="Cleavage/Fracture" value={groupForm.cleavageFracture} onChange={e => handleGroupFormChange('cleavageFracture', e.target.value)} fullWidth margin="normal" />
-          <TextField label="Crystal Form" value={groupForm.crystalForm} onChange={e => handleGroupFormChange('crystalForm', e.target.value)} fullWidth margin="normal" />
-          <TextField label="Density" value={groupForm.density} onChange={e => handleGroupFormChange('density', e.target.value)} fullWidth margin="normal" />
-          <TextField label="Transparency" value={groupForm.transparency} onChange={e => handleGroupFormChange('transparency', e.target.value)} fullWidth margin="normal" />
-          {/* Magnetism as a checkbox instead of text field */}
-          <Box display="flex" alignItems="center" sx={{ mt: 2, mb: 1 }}>
-            <input
-              type="checkbox"
-              id="magnetism-checkbox"
-              checked={Boolean(groupForm.magnetism)}
-              onChange={e => handleGroupFormChange('magnetism', e.target.checked)}
-              style={{ marginRight: 8 }}
-            />
-            <label htmlFor="magnetism-checkbox" style={{ fontSize: '1rem' }}>Magnetism</label>
-          </Box>
-          <TextField label="Notable Characteristics" value={groupForm.notableCharacteristics} onChange={e => handleGroupFormChange('notableCharacteristics', e.target.value)} fullWidth margin="normal" />
-            {addGroupError && <Alert severity="error" sx={{ mt: 2 }}>{addGroupError}</Alert>}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseGroup} disabled={addingGroup}>Cancel</Button>
-          <Button onClick={handleAddGroup} variant="contained" disabled={addingGroup}>
-            Add
-          </Button>
-        </DialogActions>
-        </Dialog>
+      <DeleteRockDialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={async () => {
+          if (selectedRockIdx === null) return;
+          setDeleting(true);
+          setDeleteError(null);
+          try {
+            const rock = sortedRocks[selectedRockIdx];
+            if (!rock.id) throw new Error('Rock ID not found');
+            await deleteRock(rock.id);
+            setLoading(true);
+            fetchRocks()
+              .then(setRocks)
+              .catch((err) => setError(err.message))
+              .finally(() => setLoading(false));
+            setSelectedRockIdx(null);
+            setShowDeleteAction(false);
+            setDeleteDialogOpen(false);
+          } catch (e: any) {
+            setDeleteError(e.message);
+          } finally {
+            setDeleting(false);
+          }
+        }}
+        deleting={deleting}
+        error={deleteError}
+      />
+      <AddRockDialog
+        open={open}
+        onClose={handleClose}
+        onAdd={handleAdd}
+        form={form}
+        onFormChange={handleFormChange}
+        groups={groups}
+        adding={adding}
+        addError={addError}
+      />
+      <AddGroupDialog
+        open={openGroup}
+        onClose={handleCloseGroup}
+        onAdd={handleAddGroup}
+        form={groupForm}
+        onFormChange={handleGroupFormChange}
+        adding={addingGroup}
+        addError={addGroupError}
+      />
     </>
     );
 }
