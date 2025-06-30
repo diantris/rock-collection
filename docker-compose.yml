@@ -24,7 +24,34 @@ services:
     ports:
       - "8080:8080"
     restart: on-failure
+    # For local Maven dev, comment out this service and run backend with mvn spring-boot:run
+
+  frontend:
+    build: ./rock-collection-frontend
+    container_name: rockcollection-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      # For all-in-docker: use http://localhost:8080 so browser can reach backend
+      - REACT_APP_API_URL=http://localhost:8080
+    restart: on-failure
+    # For local Yarn dev, comment out this service and run frontend with yarn start
 
 volumes:
   db_data:
 
+# Usage Scenarios:
+# 1. All in containers: docker-compose up --build
+# 2. DB+backend in containers, frontend with yarn:
+#    docker-compose up db api
+#    (then in frontend dir: yarn start)
+# 3. DB+frontend in containers, backend with maven:
+#    docker-compose up db frontend
+#    (then in backend dir: mvn spring-boot:run)
+#    Optionally set REACT_APP_API_URL=http://localhost:8080 for frontend
+# 4. Only DB in container, backend and frontend locally:
+#    docker-compose up db
+#    (then run backend and frontend locally)
