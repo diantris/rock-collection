@@ -124,3 +124,11 @@ replay_pid*
 
 # node_modules
 /rock-collection-frontend/node_modules/
+
+# next.js
+/rock-collection-frontend/.next/
+/rock-collection-frontend/next-env.d.ts
+# next.js build output
+/rock-collection-frontend/out/
+# next.js static files
+/rock-collection-frontend/public/static/
