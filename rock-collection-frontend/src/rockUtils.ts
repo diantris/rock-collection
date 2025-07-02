@@ -3,7 +3,7 @@ import { CollectedRock, RockGroup } from './CollectedRocksTable';
 
 // Determine API base URL
 const isDocker = process.env.REACT_APP_API_URL !== undefined;
-const API_BASE = isDocker ? process.env.REACT_APP_API_URL : '';
+const API_BASE = isDocker ? process.env.REACT_APP_API_URL : 'http://localhost:8080';
 
 if (isDocker && !process.env.REACT_APP_API_URL) {
   throw new Error('REACT_APP_API_URL must be set when running in Docker.');
