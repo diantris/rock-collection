@@ -14,7 +14,12 @@ const CollectedRocksTableHeader: React.FC<CollectedRocksTableHeaderProps> = ({ c
   <TableHead>
     <TableRow sx={{ backgroundColor: '#1976d2' }}>
       {columns.map((col) => (
-        <TableCell key={col.key} sx={{ color: 'white', fontWeight: 'bold', fontSize: '1.25rem' }}>
+        <TableCell
+          key={col.key}
+          sx={{ color: 'white', fontWeight: 'bold', fontSize: '1.25rem' }}
+          role="columnheader"
+          aria-label={col.label}
+        >
           <TableSortLabel
             active={sortBy === col.key}
             direction={sortBy === col.key ? order : 'asc'}
@@ -25,10 +30,9 @@ const CollectedRocksTableHeader: React.FC<CollectedRocksTableHeaderProps> = ({ c
           </TableSortLabel>
         </TableCell>
       ))}
-      <TableCell sx={{ backgroundColor: '#1976d2', width: 48 }} />
+      <TableCell sx={{ backgroundColor: '#1976d2', width: 48 }} role="columnheader" aria-label="Actions" />
     </TableRow>
   </TableHead>
 );
 
 export default CollectedRocksTableHeader;
-

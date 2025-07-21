@@ -177,20 +177,40 @@ const CollectedRocksTable: React.FC = () => {
   return (
     <>
       {/* Header */}
-      <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 2 }}>
+      <Typography
+        variant="h4"
+        sx={{ fontWeight: 'bold', mb: 2 }}
+        role="heading"
+        aria-level={1}
+        aria-label="Collected Rocks"
+      >
         Collected Rocks
       </Typography>
       {/* Action buttons below header, left-aligned */}
       <Box display="flex" flexDirection="row" gap={2} mb={2}>
-        <Button variant="contained" color="primary" onClick={handleOpen} sx={{ textTransform: 'none', fontWeight: 600 }}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleOpen}
+          sx={{ textTransform: 'none', fontWeight: 600 }}
+          role="button"
+          aria-label="Add a rock"
+        >
           Add a rock
         </Button>
-        <Button variant="contained" color="primary" onClick={handleOpenGroup} sx={{ textTransform: 'none', fontWeight: 600 }}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleOpenGroup}
+          sx={{ textTransform: 'none', fontWeight: 600 }}
+          role="button"
+          aria-label="Add a group"
+        >
           Add a group
         </Button>
       </Box>
       <TableContainer component={Paper} sx={{ mt: 2, boxShadow: 3, borderRadius: 2 }}>
-        <Table>
+        <Table role="table" aria-label="Collected Rocks Table">
           <CollectedRocksTableHeader
             columns={columns}
             sortBy={sortBy}

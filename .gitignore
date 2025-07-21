@@ -124,6 +124,7 @@ replay_pid*
 
 # node_modules
 /rock-collection-frontend/node_modules/
+/rock-collection-frontend/package-lock.json
 
 # next.js
 /rock-collection-frontend/.next/
@@ -132,3 +133,7 @@ replay_pid*
 /rock-collection-frontend/out/
 # next.js static files
 /rock-collection-frontend/public/static/
+
+# test results
+/test-results
+/rock-collection-frontend/test-results
