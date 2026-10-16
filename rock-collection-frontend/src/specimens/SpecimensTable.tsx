@@ -6,7 +6,8 @@ import {
 } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import { deleteSpecimen, fetchSpecimens } from './api';
-import AddSpecimenDialog from './AddSpecimenDialog';
+import SpecimenFormDialog from './SpecimenFormDialog';
+import SpecimenDetailDialog from './SpecimenDetailDialog';
 import AddMaterialDialog from './AddMaterialDialog';
 import DeleteSpecimenDialog from './DeleteSpecimenDialog';
 import ColumnPicker from './ColumnPicker';
@@ -31,9 +32,12 @@ const SpecimensTable: React.FC = () => {
   const [order, setOrder] = useState<Order>('asc');
   // Defaults on first render (matches server rendering), then the saved choice from this browser
   const [visibleIds, setVisibleIds] = useState(() => COLUMNS.filter(c => c.defaultVisible).map(c => c.id));
-  const [addOpen, setAddOpen] = useState(false);
+  // Form dialog: closed (null), adding ('new') or editing a specimen id
+  const [formTarget, setFormTarget] = useState<number | 'new' | null>(null);
+  const [detailId, setDetailId] = useState<number | null>(null);
+  const [detailRefresh, setDetailRefresh] = useState(0);
   const [addMaterialOpen, setAddMaterialOpen] = useState(false);
-  const [toDelete, setToDelete] = useState<SpecimenSummary | null>(null);
+  const [toDelete, setToDelete] = useState<{ id: number; name: string } | null>(null);
 
   useEffect(() => setVisibleIds(loadVisibleColumns()), []);
 
@@ -76,7 +80,7 @@ const SpecimensTable: React.FC = () => {
         Rock Collection
       </Typography>
       <Stack direction="row" sx={{ gap: 2, mb: 2, flexWrap: 'wrap' }}>
-        <Button variant="contained" onClick={() => setAddOpen(true)}>Add a specimen</Button>
+        <Button variant="contained" onClick={() => setFormTarget('new')}>Add a specimen</Button>
         <Button variant="outlined" onClick={() => setAddMaterialOpen(true)}>Add a material</Button>
         <Box sx={{ flexGrow: 1 }} />
         <ColumnPicker visible={visibleIds} onChange={handleColumnsChange} />
@@ -119,7 +123,7 @@ const SpecimensTable: React.FC = () => {
                 </TableRow>
               )}
               {data?.content.map(s => (
-                <TableRow key={s.id} hover>
+                <TableRow key={s.id} hover onClick={() => setDetailId(s.id)} sx={{ cursor: 'pointer' }}>
                   {columns.map(col => (
                     <TableCell key={col.id} sx={stickySx(col, stickyLeft[col.id], false)}
                       title={col.id === 'name' ? s.name : undefined}>
@@ -127,7 +131,7 @@ const SpecimensTable: React.FC = () => {
                     </TableCell>
                   ))}
                   <TableCell align="right">
-                    <IconButton aria-label={`Delete ${s.name}`} onClick={() => setToDelete(s)} size="small">
+                    <IconButton aria-label={`Delete ${s.name}`} onClick={e => { e.stopPropagation(); setToDelete(s); }} size="small">
                       <DeleteOutlineIcon fontSize="small" />
                     </IconButton>
                   </TableCell>
@@ -147,10 +151,27 @@ const SpecimensTable: React.FC = () => {
         />
       </Paper>
 
-      <AddSpecimenDialog
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        onCreated={() => { setAddOpen(false); load(); }}
+      <SpecimenFormDialog
+        open={formTarget !== null}
+        specimenId={typeof formTarget === 'number' ? formTarget : null}
+        onClose={() => setFormTarget(null)}
+        onAdded={load}
+        onSaved={saved => {
+          // After editing, return to the (refreshed) details; after adding, just show the updated table
+          if (typeof formTarget === 'number') {
+            setDetailId(saved.id);
+            setDetailRefresh(n => n + 1);
+          }
+          setFormTarget(null);
+          load();
+        }}
+      />
+      <SpecimenDetailDialog
+        specimenId={formTarget === null ? detailId : null}
+        refreshKey={detailRefresh}
+        onClose={() => setDetailId(null)}
+        onEdit={id => setFormTarget(id)}
+        onDelete={s => setToDelete(s)}
       />
       <AddMaterialDialog open={addMaterialOpen} onClose={() => setAddMaterialOpen(false)} onCreated={() => setAddMaterialOpen(false)} />
       <DeleteSpecimenDialog
@@ -159,6 +180,7 @@ const SpecimensTable: React.FC = () => {
         onConfirm={async () => {
           await deleteSpecimen(toDelete!.id);
           setToDelete(null);
+          setDetailId(null);
           load();
         }}
       />

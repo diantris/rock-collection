@@ -139,3 +139,49 @@ export interface MaterialRequest {
   mindatUrl?: string | null;
   description?: string | null;
 }
+
+/** Full specimen as returned by GET /api/specimens/{id} (includes private fields). */
+export interface SpecimenDetail {
+  id: number;
+  name: string;
+  marketName: string | null;
+  form: SpecimenForm | null;
+  nature: SpecimenNature | null;
+  treatmentNotes: string | null;
+  components: Component[];
+  color: string | null;
+  secondaryColor: string | null;
+  luster: string | null;
+  transparency: string | null;
+  streak: string | null;
+  hardnessMin: number | null;
+  hardnessMax: number | null;
+  cleavage: string | null;
+  fracture: string | null;
+  crystalHabit: string | null;
+  specificGravity: number | null;
+  specialProperties: SpecialProperty[];
+  opticalEffects: OpticalEffect[];
+  inclusions: string | null;
+  weightG: number | null;
+  lengthMm: number | null;
+  widthMm: number | null;
+  heightMm: number | null;
+  otherObservations: string | null;
+  locality: string | null;
+  country: string | null;
+  acquisitionType: AcquisitionType | null;
+  acquiredFrom: string | null;
+  acquiredCountry: string | null;
+  acquiredYear: number | null;
+  acquiredMonth: number | null;
+  acquiredDay: number | null;
+  price: number | null;
+  currency: string | null;
+  tags: string[];
+  description: string | null;
+  privateNotes: string | null;
+  published: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

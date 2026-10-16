@@ -24,7 +24,7 @@ The main purpose of the public site is **crowd-sourced identification**: the own
   3. The app resizes each full photo to web size, removes **EXIF metadata, especially GPS location**, and pushes it to the Pages repo through the GitHub API.
 - **Photos are public once uploaded.** They become visible in the public repo straight away, even before the specimen is published. This was accepted for simplicity, because rock photos aren't sensitive.
 - **Size limits:** keep published photos resized (about 1600px, a few hundred KB each). GitHub Pages sites are limited to about 1 GB.
-- **Visual style:** **Material You / Material Design 3**, readable and modern, even though this is a desktop-first web app. Achieve it by **restyling MUI with a custom theme** (MUI 7 implements Material Design 2). Do not switch to a different component library.
+- **Visual style:** **Material You / Material Design 3**, readable and modern, even though this is a desktop-first web app. Achieve it by **restyling MUI with a custom theme** (MUI implements Material Design 2). Do not switch to a different component library. See **Theme** under Frontend.
 
 ### Publishing
 
@@ -59,18 +59,18 @@ Keep data entry **low-friction**: sensible defaults, few required fields, no lon
 **Already built:**
 - the specimen data model (roadmap step 1)
 - a REST API for specimens and materials
-- a server-paged, server-sorted specimen table with quick-add, add-material and delete dialogs
+- a server-paged, server-sorted specimen table with a column picker
+- the full add/edit form, the detail view and the Material You theme (roadmap step 2)
 
 **Not built yet:**
-- the full add/edit specimen form and a detail view
-- the Material You theme
 - photos, thumbnails and the gallery
+- editing or deleting materials in the UI (the API supports both)
 - the publish settings table and the static export
 - GCP deployment
 
 **Agreed roadmap:**
 1. ~~New specimen data model~~ (done, Day 7)
-2. Full add/edit forms and the Material You restyle (paging already done)
+2. ~~Full add/edit forms and the Material You restyle~~ (done, Day 7)
 3. Thumbnail upload and the photo pipeline
 4. Static site export with a gallery
 5. GCP deployment
@@ -157,14 +157,30 @@ Unknown specimens are the main use case. The owner records measurements and obse
   - `ColumnPicker` lets the user choose others. The choice is saved in `localStorage`, per browser.
   - #, Photo and Name are frozen on the left, and the table scrolls sideways.
   - The optional "Scientific identity" column shows materials as chips: filled when confirmed, outlined when tentative.
-- `specimens/` also holds `AddSpecimenDialog`, `AddMaterialDialog` and `DeleteSpecimenDialog`.
+- **Clicking a row** opens `SpecimenDetailDialog`. It shows every field grouped into sections, and each section lists its unrecorded fields ("Not recorded: …") as a nudge for measurements. Its Edit button opens `SpecimenFormDialog`.
+- **`SpecimenFormDialog`** handles both add and edit.
+  - Name, market name, tags, form and nature are always visible. Everything else is in collapsible sections (`Accordion`), and each section header shows how many of its fields are filled.
+  - Numbers accept decimal commas ("2,65").
+  - Luster, transparency, streak, cleavage, fracture and habit offer suggestions from `suggestions.ts`, but free text is still allowed. Hardness has a scratch-test hint.
+  - Typing a material that isn't on the list offers "Add … as a new material", which opens `AddMaterialDialog` pre-filled.
+  - **"Add & next"** saves the specimen and resets the form for the next one. It keeps the source, where-I-got-it, date, currency and tags, for batch entry.
+  - PUT replaces every field, so the form always sends the full request.
+- `specimens/` also holds `AddMaterialDialog` and `DeleteSpecimenDialog`.
+- **Theme (`theme.ts`): Material You / M3.**
+  - **Colours:** generated from `SEED_COLOR` by `@material/material-color-utilities` (`SchemeTonalSpot`). Change that one value to re-colour the whole app.
+  - **Light and dark mode** follow the OS, using MUI CSS variables with `colorSchemes`.
+  - **Extra colour roles:** M3 roles with no slot in MUI's palette (surface containers, outline, …) live under `theme.vars.palette.m3.*`.
+  - **Component overrides:** pill buttons, 28px dialogs, 8px chips, tonal accordions.
+  - **Typography:** Roboto via `next/font`, with the M3 type scale mapped onto the MUI variants (h4 = headline large, and so on).
 - API calls go in `specimens/api.ts`. It reads `NEXT_PUBLIC_API_URL`, which is baked in at build time (a Docker build arg) and defaults to `http://localhost:8080`. It throws `ApiError`, which carries any field errors.
 - Types and enum display labels live in `specimens/types.ts`.
 - **MUI 9 removed system props** (`<Stack gap={2}>`, `<Box display="flex">`). Put style values in `sx` instead.
 - Playwright tests select elements by role and accessible name. Keep these names stable, or update `test/*.spec.ts` along with them:
   - the heading "Rock Collection"
   - the table "Specimens"
-  - the buttons "Add a specimen" and "Delete {name}"
+  - the buttons "Add a specimen", "Add & next" and "Delete {name}"
+  - the dialogs "Add a specimen", "Edit #{id}", "#{id} {name}" and "Add a material"
+  - the detail sections, which are regions named after their titles
 
 ## Commands
 
@@ -203,6 +219,9 @@ The Playwright tests use `FRONTEND_URL` (default `http://localhost:3000`) and `A
 - **`DatabaseIntegrationTest` needs Docker running.** It uses Testcontainers with `postgres:18` to run the Flyway migrations, lets Hibernate validate the mappings, and round-trips a fully populated specimen. When Docker is off, `./mvnw test` fails on this class; use `-Dtest='!DatabaseIntegrationTest'` to skip it.
 - **`ddl-auto=validate`**: the app refuses to start if the entities and the schema disagree. A new column needs both a migration and the entity field.
 - **The naming strategy doesn't split a trailing single capital.** `weightG` maps to `weightg`, not `weight_g`. Give such fields an explicit `@Column(name = ...)`.
+- **`next.config.ts` lists `@material/material-color-utilities` in `transpilePackages`.** Version 0.4.0 has an ESM import without a file extension that Node can't resolve during SSR, which made `next build` fail inside Docker. Remove the workaround once upstream fixes it.
+- **Check the exit code of `docker compose build`.** A failed image build leaves the old container running, so tests silently run against stale code.
+- **Playwright accessible names match substrings** ("Name" also matches "Market name", "Where I got it" also matches "Country (where I got it)"). Use `exact: true` for field labels.
 - `.gitignore` excludes `package-lock.json`. Yarn is the package manager, and `yarn.lock` is committed.
 
 ## Conventions

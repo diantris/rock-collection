@@ -1,10 +1,9 @@
 // DeleteSpecimenDialog.tsx - Confirmation dialog before deleting a specimen
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material';
-import { SpecimenSummary } from './types';
 
 interface Props {
-  specimen: SpecimenSummary | null; // dialog is open while non-null
+  specimen: { id: number; name: string } | null; // dialog is open while non-null
   onClose: () => void;
   onConfirm: () => Promise<void>;
 }

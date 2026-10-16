@@ -1,5 +1,5 @@
 // api.ts - Fetch-based client for the backend REST API
-import { Material, MaterialRequest, Order, Page, SpecimenRequest, SpecimenSortKey, SpecimenSummary } from './types';
+import { Material, MaterialRequest, Order, Page, SpecimenDetail, SpecimenRequest, SpecimenSortKey, SpecimenSummary } from './types';
 
 // NEXT_PUBLIC_ variables are inlined into the browser bundle at build time
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
@@ -33,8 +33,17 @@ export function fetchSpecimens(page: number, size: number, sort: SpecimenSortKey
   return request(`/api/specimens?${params}`);
 }
 
-export function createSpecimen(body: SpecimenRequest): Promise<unknown> {
+export function fetchSpecimen(id: number): Promise<SpecimenDetail> {
+  return request(`/api/specimens/${id}`);
+}
+
+export function createSpecimen(body: SpecimenRequest): Promise<SpecimenDetail> {
   return request('/api/specimens', { method: 'POST', body: JSON.stringify(body) });
+}
+
+/** Replaces every field of the specimen (send the full request, not a patch). */
+export function updateSpecimen(id: number, body: SpecimenRequest): Promise<SpecimenDetail> {
+  return request(`/api/specimens/${id}`, { method: 'PUT', body: JSON.stringify(body) });
 }
 
 export function deleteSpecimen(id: number): Promise<void> {

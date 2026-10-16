@@ -3,13 +3,15 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField } from '@mui/material';
 import { createMaterial } from './api';
 import {
-  CRYSTAL_SYSTEM_LABELS, CrystalSystem, FAMILY_LABELS, MATERIAL_CATEGORY_LABELS, MaterialCategory, MaterialFamily,
+  CRYSTAL_SYSTEM_LABELS, CrystalSystem, FAMILY_LABELS, Material, MATERIAL_CATEGORY_LABELS, MaterialCategory, MaterialFamily,
 } from './types';
 
 interface Props {
   open: boolean;
+  /** Pre-filled scientific name, e.g. what was typed into a material search box. */
+  initialName?: string;
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: (material: Material) => void;
 }
 
 const emptyForm = {
@@ -23,14 +25,14 @@ const emptyForm = {
   description: '',
 };
 
-const AddMaterialDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
+const AddMaterialDialog: React.FC<Props> = ({ open, initialName = '', onClose, onCreated }) => {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open) { setForm(emptyForm); setError(null); }
-  }, [open]);
+    if (open) { setForm({ ...emptyForm, name: initialName }); setError(null); }
+  }, [open, initialName]);
 
   const set = <K extends keyof typeof emptyForm>(field: K, value: (typeof emptyForm)[K]) =>
     setForm(prev => ({ ...prev, [field]: value }));
@@ -39,8 +41,7 @@ const AddMaterialDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
     setSaving(true);
     setError(null);
     try {
-      await createMaterial({ ...form, family: form.family || null, crystalSystem: form.crystalSystem || null });
-      onCreated();
+      onCreated(await createMaterial({ ...form, family: form.family || null, crystalSystem: form.crystalSystem || null }));
     } catch (e) {
       setError((e as Error).message);
     } finally {
