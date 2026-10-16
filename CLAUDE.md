@@ -6,7 +6,7 @@ Guidance for Claude Code when working in this repository.
 
 A personal catalogue of the owner's specimen collection (well over 200 items, and growing). It has two parts:
 
-1. **A private management app** (DB + API + UI) for the owner and their husband. It shows a paged, sortable table, each row with **one** thumbnail photo, and has add/edit/delete. It will be hosted on **GCP**, with access restricted to the owner's static IP. Because the network restriction is the access control, there's no in-app authentication. The full photo set for every specimen lives on the private side.
+1. **A private management app** (DB + API + UI) for the owner and their husband. It shows a paged, sortable table, each row with **one** thumbnail photo, and has add/edit/delete. It will be hosted on **GCP**, with access restricted to the owner's static IP. Because the network restriction is the access control, there's no in-app authentication.
 2. **A public static site generator.** A service that exports the collection, with **all** photos per specimen, to a static site deployed on **GitHub Pages**.
 
 The main purpose of the public site is **crowd-sourced identification**: the owner shares it with geologists and other specialists and asks for their opinions. So:
@@ -14,11 +14,31 @@ The main purpose of the public site is **crowd-sourced identification**: the own
 - **Do not build automated identification** (no AI, photo recognition or property-matching "identify this" features). The owner has explicitly ruled this out.
 - Each specimen should record enough observable data for an expert to judge it from the page: photos plus physical properties.
 
-### Image UX
+### Images
 
-- The table shows a single thumbnail per specimen.
-- Clicking it opens a gallery or carousel popup of all the specimen's photos, with mobile-style dot indicators showing the current position.
-- Visual style: **Material You / Material Design 3** (Google's latest), readable and modern, even though this is a desktop-first web app. The current UI uses MUI 7, which implements Material Design 2; the move to M3 styling hasn't been decided yet.
+- **Private app:** each specimen has **one small thumbnail stored in the database**, just enough to recognize the stone. The app only stores the *file names and order* of the full photos. It doesn't need to keep the photos themselves.
+- **Public site:** the full photos live in the GitHub Pages repo. Each specimen gets a gallery or carousel popup of all its photos, with mobile-style dot indicators showing the current position.
+- **Upload flow:**
+  1. The owner uploads photos in the private app.
+  2. The app makes the thumbnail and keeps it.
+  3. The app resizes each full photo to web size, removes **EXIF metadata, especially GPS location**, and pushes it to the Pages repo through the GitHub API.
+- **Photos are public once uploaded.** They become visible in the public repo straight away, even before the specimen is published. This was accepted for simplicity, because rock photos aren't sensitive.
+- **Size limits:** keep published photos resized (about 1600px, a few hundred KB each). GitHub Pages sites are limited to about 1 GB.
+- **Visual style:** **Material You / Material Design 3**, readable and modern, even though this is a desktop-first web app. Achieve it by **restyling MUI with a custom theme** (MUI 7 implements Material Design 2). Do not switch to a different component library.
+
+### Publishing
+
+- **Where the site lives:** a **separate public GitHub repo**. It doesn't exist yet and isn't needed until roadmap step 4.
+- **This repo is public too.** The `rockuser` / `rockpass` credentials in it are local-dev defaults only. Real deployments (GCP) must use different credentials supplied through env vars or Secret Manager. Never commit real secrets, tokens or the owner's personal data here.
+- **How it's triggered:** a **"Publish" button in the private app**. No local scripts are involved.
+- **What publish does:** the backend regenerates the whole site (HTML/CSS/JS plus data) from the current DB state. It pushes the result as **one commit** to the Pages repo through the GitHub API (the Git Data API: create a tree, then a commit, then update the ref), not one commit per file.
+- **Repeated publishes:** publishing again replaces the generated pages but leaves the photos alone.
+- **GitHub token:** a fine-grained personal access token scoped to the Pages repo only (contents: read/write). It comes from configuration (an env var, or Secret Manager on GCP) and is never committed.
+
+### Public site content
+
+- Each field has a "publish" checkbox that controls whether it goes into the generated page. Private fields (price, seller, personal notes, etc.) must never leak into the export.
+- Contact with experts happens outside the site (email, phone, messenger, in person). There's no comment system. Each specimen needs a clear, stable ID shown on the page so people can refer to it ("specimen #142").
 
 ### What the collection contains (domain model requirements)
 
@@ -40,6 +60,13 @@ The main purpose of the public site is **crowd-sourced identification**: the own
 - the richer specimen model described above
 - the static site export and GitHub Pages deployment
 - GCP deployment
+
+**Agreed roadmap:**
+1. New specimen data model
+2. Paging and full add/edit forms
+3. Thumbnail upload and the photo pipeline
+4. Static site export with a gallery
+5. GCP deployment
 
 ## Architecture
 
