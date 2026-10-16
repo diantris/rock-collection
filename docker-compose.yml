@@ -1,7 +1,6 @@
-version: '3.8'
 services:
   db:
-    image: postgres:15
+    image: postgres:18
     container_name: rockcollection-db
     environment:
       POSTGRES_DB: rockdb
@@ -10,13 +9,20 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
+      # postgres 18+ keeps its data in a version-specific subdirectory of /var/lib/postgresql
+      - db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rockuser -d rockdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   api:
     build: ./rock-collection-backend
     container_name: rockcollection-api
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/rockdb
       SPRING_DATASOURCE_USERNAME: rockuser
@@ -24,34 +30,25 @@ services:
     ports:
       - "8080:8080"
     restart: on-failure
-    # For local Maven dev, comment out this service and run backend with mvn spring-boot:run
 
   frontend:
-    build: ./rock-collection-frontend
+    build:
+      context: ./rock-collection-frontend
+      args:
+        # Inlined into the browser bundle at build time; must be reachable from the browser
+        NEXT_PUBLIC_API_URL: http://localhost:8080
     container_name: rockcollection-frontend
     ports:
       - "3000:3000"
     depends_on:
       - api
-    environment:
-      - CHOKIDAR_USEPOLLING=true
-      # For all-in-docker: use http://localhost:8080 so browser can reach backend
-      - REACT_APP_API_URL=http://localhost:8080
     restart: on-failure
-    # For local Yarn dev, comment out this service and run frontend with yarn start
 
 volumes:
   db_data:
 
-# Usage Scenarios:
-# 1. All in containers: docker-compose up --build
-# 2. DB+backend in containers, frontend with yarn:
-#    docker-compose up db api
-#    (then in frontend dir: yarn start)
-# 3. DB+frontend in containers, backend with maven:
-#    docker-compose up db frontend
-#    (then in backend dir: mvn spring-boot:run)
-#    Optionally set REACT_APP_API_URL=http://localhost:8080 for frontend
-# 4. Only DB in container, backend and frontend locally:
-#    docker-compose up db
-#    (then run backend and frontend locally)
+# Usage scenarios:
+# 1. All in containers:            docker compose up --build
+# 2. DB + backend in containers:   docker compose up db api      (then: yarn dev in rock-collection-frontend)
+# 3. DB + frontend in containers:  docker compose up db frontend (then: ./mvnw spring-boot:run in rock-collection-backend)
+# 4. Only DB in a container:       docker compose up db          (then run backend and frontend locally)

@@ -137,3 +137,5 @@ replay_pid*
 # test results
 /test-results
 /rock-collection-frontend/test-results
+# TypeScript incremental build info
+*.tsbuildinfo

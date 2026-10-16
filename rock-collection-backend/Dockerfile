@@ -1,13 +1,16 @@
-# Use Maven to build the Spring Boot fat jar
-FROM maven:3.9.6-eclipse-temurin-17 AS build
+# Build the Spring Boot fat jar with the Maven wrapper
+FROM eclipse-temurin:25-jdk AS build
 WORKDIR /app
-COPY . .
-RUN mvn clean package spring-boot:repackage -DskipTests
+# Resolve dependencies first so they are cached between source changes
+COPY mvnw pom.xml ./
+COPY .mvn .mvn
+RUN chmod +x mvnw && ./mvnw -B -q dependency:go-offline
+COPY src src
+RUN ./mvnw -B -q package -DskipTests
 
-# Use a minimal JRE image for running the app
-FROM openjdk:17-jdk-slim
+# Run on a minimal JRE image
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 COPY --from=build /app/target/rock-collection-backend-1.0-SNAPSHOT.jar app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
-

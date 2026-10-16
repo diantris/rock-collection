@@ -2,93 +2,62 @@
 
 > **Note:** This project is being created with AI assistance as a form of training, to experiment with AI-driven software development workflows. It was started with GitHub Copilot (Days 1–6) and continued with Claude Code from Day 7.
 
-A full-stack application for managing a rock collection.
+A personal catalogue of a rock, mineral and cabochon collection, built to help identify unknown specimens with the help of experts.
 
 ## Project Structure
 
-- **Backend:** Java 17, Spring Boot, Maven
-- **Frontend:** React, TypeScript
-- **Database:** PostgreSQL (via Docker)
-- **Containerization:** Docker, Docker Compose
+- **Backend:** Java 25, Spring Boot 4, Spring Data JPA, Flyway, Maven (wrapper included)
+- **Frontend:** Next.js 16, React 19, MUI 9, TypeScript
+- **Database:** PostgreSQL 18 (via Docker)
+- **Tests:** JUnit 5 + Testcontainers (backend), Playwright (end-to-end)
 
 ## Features
-- View, add, and delete collected rocks
-- Manage rock groups and properties
-- RESTful API (Spring Boot)
-- Persistent PostgreSQL database
-- Modular, type-safe React frontend
+
+- Paged, sortable table of specimens with selectable columns
+- Specimens with a name, market name and a scientific identity made of several materials (host, inclusions, matrix…), each confirmed or tentative
+- Observed properties per specimen (hardness, streak, luster, specific gravity, optical effects, …) as evidence for identification
+- Reference list of materials with type, family, mineral group and crystal system
 
 ## Getting Started
 
 ### Prerequisites
-- [Docker](https://www.docker.com/get-started/)
-- [Node.js](https://nodejs.org/) (for frontend development)
-- [Java 17](https://adoptopenjdk.net/) (for backend development)
 
-### Running with Docker Compose
+- [Docker Desktop](https://www.docker.com/get-started/)
+- [Node.js 24](https://nodejs.org/) (frontend development; Yarn 1 runs via `corepack yarn`)
+- [JDK 25](https://adoptium.net/) (backend development; Maven is provided by `./mvnw`)
 
-1. Clone the repository:
-   ```sh
-   git clone <repo-url>
-   cd rock-collection
-   ```
-2. Build and start all services:
-   ```sh
-   docker-compose up --build
-   ```
-3. The backend API will be available at [http://localhost:8080](http://localhost:8080)
-4. The PostgreSQL database will be available at `localhost:5432` (user: `rockuser`, password: `rockpass`, db: `rockdb`)
+### Running everything with Docker Compose
 
-### Running Frontend Locally
+```sh
+docker compose up --build
+```
 
-1. Navigate to the frontend directory:
-   ```sh
-   cd rock-collection-frontend
-   ```
-2. Install dependencies:
-   ```sh
-   npm install
-   ```
-3. Start the development server:
-   ```sh
-   npm start
-   ```
-4. The app will be available at [http://localhost:3000](http://localhost:3000)
+- Frontend: <http://localhost:3000>
+- API: <http://localhost:8080/api/specimens>
+- PostgreSQL: `localhost:5432` (user `rockuser`, password `rockpass`, db `rockdb` — local development only)
 
-### Running Backend Locally
+### Running parts locally
 
-1. Navigate to the backend directory:
-   ```sh
-   cd rock-collection-backend
-   ```
-2. Build the project:
-   ```sh
-   mvn clean package
-   ```
-3. Run the application:
-   ```sh
-   java -jar target/rock-collection-backend-1.0-SNAPSHOT.jar
-   ```
+```sh
+docker compose up db                       # database only
 
-## Configuration
+cd rock-collection-backend
+./mvnw spring-boot:run                     # API on :8080
+./mvnw test                                # unit + integration tests (integration tests need Docker)
 
-- All backend configuration is in `rock-collection-backend/src/main/resources/application.properties`.
-- Database connection details are set via environment variables in `docker-compose.yml`.
+cd rock-collection-frontend
+corepack yarn install
+corepack yarn dev                          # frontend on :3000
+corepack yarn test:e2e                     # Playwright tests (full stack must be running)
+```
 
 ## Useful Commands
 
-- **Stop all containers:**
-  ```sh
-  docker-compose down
-  ```
-- **View logs:**
-  ```sh
-  docker-compose logs -f
-  ```
-
-## Contributing
-
-Pull requests are welcome! Please follow the code style and guidelines in the repository.
+```sh
+docker compose down        # stop all containers
+docker compose down -v     # stop and wipe the database volume
+docker compose logs -f     # follow logs
+```
 
 ## License
 

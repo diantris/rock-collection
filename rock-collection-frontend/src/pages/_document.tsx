@@ -1,16 +1,16 @@
-import { Html, Head, Main, NextScript } from 'next/document';
+import { Html, Head, Main, NextScript, DocumentProps, DocumentContext } from 'next/document';
+import { DocumentHeadTags, DocumentHeadTagsProps, documentGetInitialProps } from '@mui/material-nextjs/v16-pagesRouter';
 
 /**
- * Custom Document for Next.js to set up the HTML structure and default meta tags.
+ * Custom Document: sets up the HTML structure, default meta tags and server-rendered MUI styles.
  * See: https://nextjs.org/docs/pages/api-reference/pages/_document
  */
-export default function Document() {
+export default function Document(props: DocumentProps & DocumentHeadTagsProps) {
   return (
     <Html lang="en">
       <Head>
         <meta charSet="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>My Rock Collection</title>
+        <DocumentHeadTags {...props} />
       </Head>
       <body>
         <Main />
@@ -20,3 +20,4 @@ export default function Document() {
   );
 }
 
+Document.getInitialProps = async (ctx: DocumentContext) => documentGetInitialProps(ctx);
