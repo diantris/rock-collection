@@ -1,6 +1,6 @@
 # Rock Collection
 
-> **Note:** This project is being created with the use of GitHub Copilot as a form of training. All code, structure, and documentation are generated or refactored with the assistance of GitHub Copilot to experiment with AI-driven software development workflows.
+> **Note:** This project is being created with AI assistance as a form of training, to experiment with AI-driven software development workflows. It was started with GitHub Copilot (Days 1–6) and continued with Claude Code from Day 7.
 
 A full-stack application for managing a rock collection.
 
