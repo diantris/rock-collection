@@ -146,7 +146,7 @@ public class SpecimenService {
         s.setTags(normalizeTags(r.tags()));
         s.setDescription(blankToNull(r.description()));
         s.setPrivateNotes(blankToNull(r.privateNotes()));
-        s.setPublished(Boolean.TRUE.equals(r.published()));
+        s.setPublished(r.published() == null || r.published()); // shown on the public site unless switched off
         s.replaceComponents(toComponents(r.components()));
     }
 

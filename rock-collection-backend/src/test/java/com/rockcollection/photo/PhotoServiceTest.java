@@ -56,6 +56,7 @@ class PhotoServiceTest {
         when(photoRepository.findBySpecimenIdOrderByPositionAscIdAsc(SPECIMEN)).thenReturn(List.of());
         when(imageProcessor.toWebPhoto(any())).thenReturn(
                 new ImageProcessor.Image(new byte[]{10}, 1600, 1200), new ImageProcessor.Image(new byte[]{20}, 900, 1600));
+        when(imageProcessor.toSmallPhoto(any())).thenReturn(new ImageProcessor.Image(new byte[]{11}, 480, 360));
         when(imageProcessor.toThumbnail(any())).thenReturn(new byte[]{99});
         when(thumbnailRepository.findById(SPECIMEN)).thenReturn(Optional.empty());
 
@@ -63,7 +64,9 @@ class PhotoServiceTest {
 
         ArgumentCaptor<Map<String, byte[]>> files = ArgumentCaptor.forClass(Map.class);
         verify(gitHub, times(1)).commit(eq("Add 2 photos to specimen #7"), files.capture(), eq(List.of()));
-        assertThat(files.getValue().keySet()).hasSize(2).allMatch(p -> p.matches("photos/7/7-[0-9a-f]{8}\\.jpg"));
+        // Each photo goes up with its small copy for the public site's index
+        assertThat(files.getValue().keySet()).hasSize(4).allMatch(p -> p.matches("photos/7/7-[0-9a-f]{8}(-small)?\\.jpg"));
+        assertThat(files.getValue().keySet()).filteredOn(p -> p.endsWith("-small.jpg")).hasSize(2);
 
         ArgumentCaptor<List<SpecimenPhoto>> saved = ArgumentCaptor.forClass(List.class);
         verify(photoRepository).saveAll(saved.capture());
@@ -81,6 +84,7 @@ class PhotoServiceTest {
     void upload_toSpecimenWithPhotos_appendsAndKeepsTheThumbnail() {
         when(photoRepository.findBySpecimenIdOrderByPositionAscIdAsc(SPECIMEN)).thenReturn(List.of(photo(1, "photos/7/a.jpg", 0)));
         when(imageProcessor.toWebPhoto(any())).thenReturn(new ImageProcessor.Image(new byte[]{10}, 10, 10));
+        when(imageProcessor.toSmallPhoto(any())).thenReturn(new ImageProcessor.Image(new byte[]{11}, 10, 10));
 
         service.upload(SPECIMEN, List.of(upload("c.jpg")));
 
@@ -142,7 +146,7 @@ class PhotoServiceTest {
 
         service.delete(SPECIMEN, 1L);
 
-        verify(gitHub).commit("Remove a photo from specimen #7", Map.of(), List.of("photos/7/a.jpg"));
+        verify(gitHub).commit("Remove a photo from specimen #7", Map.of(), List.of("photos/7/a.jpg", "photos/7/a-small.jpg"));
         verify(photoRepository).delete(a);
         assertThat(b.getPosition()).isZero();
         verify(thumbnailRepository).save(any());
@@ -164,6 +168,6 @@ class PhotoServiceTest {
 
         service.deleteAllFiles(SPECIMEN); // no exception
 
-        verify(gitHub).commit("Remove the photos of deleted specimen #7", Map.of(), List.of("photos/7/a.jpg"));
+        verify(gitHub).commit("Remove the photos of deleted specimen #7", Map.of(), List.of("photos/7/a.jpg", "photos/7/a-small.jpg"));
     }
 }

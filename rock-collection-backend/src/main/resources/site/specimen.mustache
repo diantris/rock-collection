@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+{{> head}}
+</head>
+<body>
+<main class="page page-narrow">
+  <nav class="crumbs"><a href="{{root}}">← All specimens</a></nav>
+
+  <header class="specimen-header">
+    <p class="specimen-number">Specimen #{{id}}</p>
+    <h1>{{name}}</h1>
+    {{#marketName}}<p class="sold-as">Sold as “{{.}}”</p>{{/marketName}}
+    {{#hasTags}}
+    <ul class="tags" aria-label="Tags">{{#tags}}<li class="chip">{{.}}</li>{{/tags}}</ul>
+    {{/hasTags}}
+  </header>
+
+  {{#hasPhotos}}
+  <section class="gallery" aria-label="Photos" tabindex="0" data-gallery>
+    <div class="gallery-track" data-gallery-track>
+      {{#photos}}
+      <figure class="gallery-slide">
+        <a href="{{src}}" title="Open the full-size photo"><img src="{{src}}" alt="{{alt}}" width="{{width}}" height="{{height}}"{{^first}} loading="lazy"{{/first}}></a>
+        {{#caption}}<figcaption>{{.}}</figcaption>{{/caption}}
+      </figure>
+      {{/photos}}
+    </div>
+    {{#manyPhotos}}
+    <button type="button" class="gallery-arrow gallery-prev" aria-label="Previous photo" data-gallery-prev hidden>‹</button>
+    <button type="button" class="gallery-arrow gallery-next" aria-label="Next photo" data-gallery-next hidden>›</button>
+    <div class="gallery-dots" role="group" aria-label="Choose a photo" data-gallery-dots hidden>
+      {{#photos}}<button type="button" aria-label="Photo {{number}}"><span></span></button>{{/photos}}
+    </div>
+    {{/manyPhotos}}
+  </section>
+  {{/hasPhotos}}
+  {{^hasPhotos}}
+  <p class="no-photos">No photos yet.</p>
+  {{/hasPhotos}}
+
+  {{#identity}}
+  <section class="panel" aria-labelledby="identity-title">
+    <h2 id="identity-title">Scientific identity</h2>
+    {{#unidentified}}
+    <p>Unidentified. This is what I’d love help with.</p>
+    {{/unidentified}}
+    {{^unidentified}}
+    <ul class="components">
+      {{#components}}
+      <li>
+        <span class="component-name">{{#mindatUrl}}<a href="{{.}}" rel="noopener noreferrer">{{/mindatUrl}}{{name}}{{#mindatUrl}}</a>{{/mindatUrl}}</span>
+        <span class="chip">{{role}}</span>
+        <span class="chip{{#confirmed}} chip-filled{{/confirmed}}">{{certainty}}</span>
+        {{#details}}<span class="component-details">{{.}}</span>{{/details}}
+      </li>
+      {{/components}}
+    </ul>
+    {{/unidentified}}
+  </section>
+  {{/identity}}
+
+  {{#sections}}
+  <section class="panel" aria-labelledby="{{slug}}-title">
+    <h2 id="{{slug}}-title">{{title}}</h2>
+    <dl>
+      {{#rows}}
+      <dt>{{label}}</dt>
+      <dd>{{value}}</dd>
+      {{/rows}}
+    </dl>
+  </section>
+  {{/sections}}
+
+  {{#hasDescription}}
+  <section class="panel" aria-labelledby="description-title">
+    <h2 id="description-title">Description</h2>
+    {{#description}}<p>{{.}}</p>{{/description}}
+  </section>
+  {{/hasDescription}}
+
+  <aside class="callout">Know what this is, or have an idea? Please mention <strong>specimen #{{id}}</strong> when you reply.</aside>
+
+  <nav class="pager" aria-label="Other specimens">
+    {{#prev}}<a href="{{href}}" rel="prev">← #{{id}} {{name}}</a>{{/prev}}
+    {{#next}}<a class="pager-next" href="{{href}}" rel="next">#{{id}} {{name}} →</a>{{/next}}
+  </nav>
+</main>
+<script src="{{root}}assets/site.js"></script>
+</body>
+</html>

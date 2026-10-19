@@ -1,5 +1,5 @@
 // api.ts - Fetch-based client for the backend REST API
-import { Material, MaterialRequest, Order, Page, Photo, SpecimenDetail, SpecimenRequest, SpecimenSortKey, SpecimenSummary } from './types';
+import { Material, MaterialRequest, Order, Page, Photo, PublishFieldKey, PublishResult, PublishSettings, SpecimenDetail, SpecimenRequest, SpecimenSortKey, SpecimenSummary } from './types';
 
 // NEXT_PUBLIC_ variables are inlined into the browser bundle at build time
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
@@ -88,4 +88,23 @@ export function deletePhoto(specimenId: number, photoId: number): Promise<void> 
 /** URL of the table thumbnail; the version makes browsers fetch it again only when it changed. */
 export function thumbnailUrl(specimenId: number, version: number): string {
   return `${API_BASE}/api/specimens/${specimenId}/thumbnail?v=${version}`;
+}
+
+export function fetchPublishSettings(): Promise<PublishSettings> {
+  return request('/api/publish/settings');
+}
+
+/** Saves the global publish checkboxes and the intro text of the public site. */
+export function updatePublishSettings(fields: PublishFieldKey[], intro: string): Promise<PublishSettings> {
+  return request('/api/publish/settings', { method: 'PUT', body: JSON.stringify({ fields, intro }) });
+}
+
+/** Marks every specimen to show on the public site. */
+export function publishAllSpecimens(): Promise<PublishSettings> {
+  return request('/api/publish/all-specimens', { method: 'POST' });
+}
+
+/** Regenerates the public site and commits it to the Pages repo. */
+export function publishSite(): Promise<PublishResult> {
+  return request('/api/publish', { method: 'POST' });
 }

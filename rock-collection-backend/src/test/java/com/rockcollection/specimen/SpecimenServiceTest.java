@@ -66,7 +66,7 @@ class SpecimenServiceTest {
 
         assertThat(created.name()).isEqualTo("Quartz with garnet");
         assertThat(created.color()).isNull();
-        assertThat(created.published()).isFalse();
+        assertThat(created.published()).isTrue(); // shown on the public site unless switched off
         assertThat(created.specialProperties()).isEmpty();
         assertThat(created.components()).singleElement().satisfies(c -> {
             assertThat(c.materialName()).isEqualTo("Quartz");

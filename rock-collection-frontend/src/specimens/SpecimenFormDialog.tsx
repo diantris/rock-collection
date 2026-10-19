@@ -64,7 +64,7 @@ type FormState = Record<TextField_ | NumberField, string> & {
 
 const emptyForm = (): FormState => ({
   ...(Object.fromEntries([...TEXT_FIELDS, ...NUMBER_FIELDS].map(f => [f, ''])) as Record<TextField_ | NumberField, string>),
-  form: '', nature: '', acquisitionType: '', specialProperties: [], opticalEffects: [], tags: [], published: false,
+  form: '', nature: '', acquisitionType: '', specialProperties: [], opticalEffects: [], tags: [], published: true,
 });
 
 function fromDetail(d: SpecimenDetail): FormState {

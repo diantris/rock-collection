@@ -28,11 +28,12 @@ The main purpose of the public site is **crowd-sourced identification**: the own
 
 ### Publishing
 
-- **Where the site lives:** a **separate public GitHub repo**, [`diantris/rock-collection-page`](https://github.com/diantris/rock-collection-page) (branch `main`, served at <https://diantris.github.io/rock-collection-page/>). Until step 4 it only holds a README and the uploaded photos (`photos/{specimenId}/…`).
+- **Where the site lives:** a **separate public GitHub repo**, [`diantris/rock-collection-page`](https://github.com/diantris/rock-collection-page) (branch `main`, served at <https://diantris.github.io/rock-collection-page/>). It holds the README, the uploaded photos (`photos/{specimenId}/…`) and the generated site (`index.html`, `specimens/{id}/index.html`, `assets/`, `.nojekyll`).
 - **This repo is public too.** The `rockuser` / `rockpass` credentials in it are local-dev defaults only. Real deployments (GCP) must use different credentials supplied through env vars or Secret Manager. Never commit real secrets, tokens or the owner's personal data here.
 - **How it's triggered:** a **"Publish" button in the private app**. No local scripts are involved.
-- **What publish does:** the backend regenerates the whole site (HTML/CSS/JS plus data) from the current DB state. It pushes the result as **one commit** to the Pages repo through the GitHub API (the Git Data API: create a tree, then a commit, then update the ref), not one commit per file.
-- **Repeated publishes:** publishing again replaces the generated pages but leaves the photos alone.
+- **What publish does:** the backend regenerates the whole site (static HTML/CSS/JS, no build step) from the current DB state. It pushes the result as **one commit** to the Pages repo through the GitHub API (the Git Data API: create a tree, then a commit, then update the ref), not one commit per file. Unchanged files are left out, and if nothing changed no commit is made.
+- **Repeated publishes:** publishing again replaces the generated pages (pages of specimens that are no longer public are deleted) but leaves the photos and the README alone.
+- **GitHub Pages deploys can lag.** GitHub queues a "pages build and deployment" run per commit; usually about a minute, sometimes several. The app says so after publishing.
 - **GitHub token:** a fine-grained personal access token scoped to the Pages repo only (permission *Contents: Read and write*; *Metadata: Read-only* is added automatically). Locally it lives in the gitignored root `.env` (`GITHUB_TOKEN=…`, template in `.env.example`), which `docker compose` passes to the API; on GCP it will come from Secret Manager. Never commit it, and never ask the owner to paste it into the chat.
 
 ### Public site content
@@ -62,18 +63,18 @@ Keep data entry **low-friction**: sensible defaults, few required fields, no lon
 - a server-paged, server-sorted specimen table with a column picker
 - the full add/edit form, the detail view and the Material You theme (roadmap step 2)
 - the photo pipeline (roadmap step 3): upload, resize, EXIF/GPS stripping, push to the Pages repo, DB thumbnails, the gallery
+- the public site (roadmap step 4): the Publish dialog with the global field checkboxes, and the generated static site
 
 **Not built yet:**
 - photo captions in the UI (the column exists, nothing edits it)
 - editing or deleting materials in the UI (the API supports both)
-- the publish settings table and the static export
 - GCP deployment
 
 **Agreed roadmap:**
 1. ~~New specimen data model~~ (done, Day 7)
 2. ~~Full add/edit forms and the Material You restyle~~ (done, Day 7)
 3. ~~Thumbnail upload and the photo pipeline~~ (done, Day 8)
-4. Static site export with a gallery
+4. ~~Static site export with a gallery~~ (done, Day 8)
 5. GCP deployment
 
 ## Architecture
@@ -111,7 +112,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
     - `acquired_year` / `acquired_month` / `acquired_day`: partial dates are allowed, but a full date must exist
     - `price` + `currency`: the currency defaults to PLN when a price is given
   - **Text:** `tags` (`VARCHAR[]`, trimmed, with case-insensitive duplicates removed), `description` (public) and `private_notes` (never exported).
-  - **Admin:** `published`, `created_at`, `updated_at`.
+  - **Admin:** `published` (shown on the public site; **defaults to true** when a request leaves it out, and the form's switch starts on), `created_at`, `updated_at`.
 - **`material`:** a scientific identity, entered once and shared by every specimen made of it.
   - `name`: the scientific name, unique ignoring case
   - `category`: the "type" (MINERAL, ROCK, ORGANIC, MAN_MADE)
@@ -121,7 +122,8 @@ Unknown specimens are the main use case. The owner records measurements and obse
 - **`specimen_component`:** links a specimen to the materials it consists of, each with a `role` (HOST, INCLUSION, ASSOCIATED, MATRIX), a `certainty` (CONFIRMED, TENTATIVE, SELLER_CLAIM) and a `position`. A specimen with no components counts as **"unidentified"**.
 - **`specimen_photo`** (`photo/SpecimenPhoto`): `file_name` (path in the Pages repo, unique, e.g. `photos/142/142-3f9a1c2e.jpg`), `caption`, `position` (0 = cover) and the published `width` / `height`. It refers to the specimen by a plain `specimen_id` column; the `Specimen` entity has no photo collection.
 - **`specimen_thumbnail`** (`photo/SpecimenThumbnail`): one 192px square JPEG per specimen (`bytea`) plus `updated_at`, in its own table so specimen queries never load image bytes. It's made from the cover photo.
-- V1–V3 are the old rock/group schema, and V4 drops it. V5 adds the photo details (thumbnail `updated_at`, photo `width` / `height`, unique `file_name`). Never edit a migration that has run anywhere; always add `V{n+1}__*.sql`. (V4 was still edited on Day 7, because it hadn't run anywhere yet.)
+- V1–V3 are the old rock/group schema, and V4 drops it. V5 adds the photo details (thumbnail `updated_at`, photo `width` / `height`, unique `file_name`). V6 adds `publish_settings`. Never edit a migration that has run anywhere; always add `V{n+1}__*.sql`. (V4 was still edited on Day 7, because it hadn't run anywhere yet.)
+- **`publish_settings`** (`publish/PublishSettings`): exactly one row (id 1), created with the defaults on first use: `fields` (`VARCHAR[]` of `PublishField` names), `intro` (front-page text), `last_published_at`, `last_commit`.
 - **Type and family in the table** come from the specimen's primary component (`Specimen.primaryComponent()`: the first HOST component, otherwise the first component). With no components, both show as unknown.
 
 ### Backend (`com.rockcollection`, feature packages)
@@ -130,9 +132,17 @@ Unknown specimens are the main use case. The owner records measurements and obse
 - `material/` holds `Material`, `MaterialCategory`, the repository, the service, the controller and `MaterialDto`.
 - `photo/` holds the photo pipeline:
   - `ImageProcessor` (Thumbnailator): web photos at most 1600px on the long edge (never enlarged), JPEG quality 0.85; thumbnails 192px square, centre-cropped. It applies the EXIF orientation, flattens transparency onto white, and re-encodes from pixels, so **no metadata survives** (EXIF, GPS, camera). Only formats ImageIO reads (JPEG, PNG, GIF, BMP); HEIC is refused with a 400.
+  - Each upload also pushes a 480px `…-small.jpg` copy next to the full photo (same commit), for app tiles and the public index. `PhotoDto.smallUrl` points at it.
   - `PhotoService`: an upload processes every file first (a bad file fails the whole batch before anything is pushed), then commits them all in **one** commit, then saves the rows. The first photo of a specimen without photos becomes the thumbnail. Reordering so a different photo is first, or deleting the cover, remakes the thumbnail by downloading the new cover back from GitHub. Deleting a specimen also removes its files from the repo (best effort; it logs and carries on if GitHub is down). Random 8-hex file-name suffixes mean names never repeat.
   - `PhotoController` under `/api/specimens/{id}` (see API).
-- `github/` holds `GitHubClient` (Git Data API: blobs, then tree, commit, ref update, so many files and deletions make one commit; also meant for publishing in step 4), `GitHubProperties` (`rockcollection.github.*`) and `GitHubException` (503). Without a token, photo uploads fail with a 503 that names `GITHUB_TOKEN`; everything else works.
+- `publish/` holds the public site:
+  - `PublishField`: the global checkboxes, each with a label, a group (the specimen page's section) and a default. The defaults are the identification evidence; source, where-I-got-it, date, price and tags start unticked. Number, name and photos are always published; **private notes aren't a field at all, so they can never be published**.
+  - `SiteGenerator`: JMustache templates in `src/main/resources/site/` (`index.mustache`, `specimen.mustache`, the `_head` partial) plus static `site/assets/` (`site.css`, `site.js`, `icon.svg`). The view models only ever contain ticked fields. Mustache escapes HTML; only `http(s)` mindat links become links. Pages use **relative links** (the site lives under `/rock-collection-page/`) and contain **no timestamps**, so unchanged pages are byte-identical and aren't re-committed. Index cards use each cover photo's `-small.jpg` copy. `isGenerated(path)` (everything except `photos/` and `README.md`) is what publishing may replace or delete.
+  - `SiteLabels`: English labels for enum values. **Keep it in sync with the `*_LABELS` maps in `specimens/types.ts`.**
+  - `site.css` holds the app's M3 palette as fixed values (light and dark). If `SEED_COLOR` changes, copy the new values from the app's `--mui-palette-*` CSS variables.
+  - `site.js` adds search, the "Unidentified only" filter and the gallery's arrows, dots and keys. Without JS every card shows and the gallery still swipes (CSS scroll-snap).
+  - `PublishService` / `PublishController` (see API).
+- `github/` holds `GitHubClient` (Git Data API: ref, commit, recursive tree listing, then one tree request with **text files inline**, then commit and ref update; only binary files need a blob request each, because GitHub allows only about 80 content-creating requests a minute; files whose git blob sha already matches are skipped; deletions of missing files are ignored; `replaceAll(message, files, managed)` makes the managed paths exactly `files`). Right after a commit GitHub can briefly report the old branch head, so a "not a fast forward" refusal is retried up to 4 times on the new head. `GitHubProperties` (`rockcollection.github.*`) and `GitHubException` (503). Without a token, photo uploads fail with a 503 that names `GITHUB_TOKEN`; everything else works.
 - `common/` holds `NotFoundException` (404), `ConflictException` (409) and `PageResponse<T>`.
 - `controller/GlobalExceptionHandler` produces the error bodies:
   - validation failures: 400 with `{field: message}`
@@ -158,6 +168,9 @@ Unknown specimens are the main use case. The owner records measurements and obse
 | PUT | `/api/specimens/{id}/photos/order` | Body: every photo id once, in the new order; the first becomes the cover. |
 | DELETE | `/api/specimens/{id}/photos/{photoId}` | 204; the next photo becomes the cover if needed |
 | GET | `/api/specimens/{id}/thumbnail?v=…` | The JPEG thumbnail, 404 if none. With `v` (the summary's `thumbnailVersion`) it's cached as immutable. |
+| GET / PUT | `/api/publish/settings` | `{fields: [{key, label, group, included}], intro, lastPublishedAt, siteUrl, publicCount, totalCount, gitHubConfigured}`. PUT takes `{fields: [keys], intro}`; an unknown key is a 400. |
+| POST | `/api/publish/all-specimens` | Marks every specimen public; returns the settings |
+| POST | `/api/publish` | Regenerates and commits the site: `{changed, specimenCount, siteUrl, publishedAt}`. `changed` is false when the site was already up to date. 503 without GitHub. |
 | GET/POST/PUT/DELETE | `/api/materials[/{id}]` | Returns 409 on a duplicate name, or when deleting a material that's still in use |
 
 ### Frontend (`rock-collection-frontend/src`)
@@ -182,6 +195,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
   - `PhotoGallery` is the shared viewer: arrows, mobile-style dots (the current one is a wider pill), a counter, left/right keys and swipe, wrapping around. It's always near-black, whatever the colour scheme.
   - `PhotosSection` sits at the top of the detail view: tiles, "Add photos" (button or drag and drop), "Make photo n the cover" and "Delete photo n" (with a confirm).
   - The add form has "Choose photos"; they're uploaded right after the specimen is saved, including with "Add & next". If the upload fails, the specimen stays saved and a warning says to add the photos from its details.
+- **`PublishDialog`** (the "Publish" button): the public/total specimen count with "Show all specimens", the field checkboxes grouped by section (each tick is saved straight away), the front-page intro (saved on blur), the last publish time with the site link, and "Publish". Without a token it explains `GITHUB_TOKEN` and disables Publish.
 - `specimens/` also holds `AddMaterialDialog` and `DeleteSpecimenDialog`.
 - **Theme (`theme.ts`): Material You / M3.**
   - **Colours:** generated from `SEED_COLOR` by `@material/material-color-utilities` (`SchemeTonalSpot`). Change that one value to re-colour the whole app.
@@ -195,11 +209,11 @@ Unknown specimens are the main use case. The owner records measurements and obse
 - Playwright tests select elements by role and accessible name. Keep these names stable, or update `test/*.spec.ts` along with them:
   - the heading "Rock Collection"
   - the table "Specimens"
-  - the buttons "Add a specimen", "Add & next" and "Delete {name}"
+  - the buttons "Add a specimen", "Add & next", "Delete {name}" and "Publish"; the dialog "Publish the public site" with the regions "Specimens on the site" and "Fields to publish" (a group per section), "Show all specimens" and the intro textbox
   - the dialogs "Add a specimen", "Edit #{id}", "#{id} {name}" and "Add a material"
   - the detail sections, which are regions named after their titles (including "Photos")
   - the photo controls: "Photos of {name}" (table photo), the dialog "{name} photos", "Previous photo" / "Next photo", "Photo n" (dots, `aria-current` on the shown one), "Close gallery", "Open photo n", "Make photo n the cover", "Delete photo n", the dialog "Delete this photo?", "Choose photos" and the file inputs labelled "Photo files"
-- `test/photos.spec.ts` **mocks every photo endpoint and image URL with `page.route`**, because a real upload pushes to the public Pages repo. Keep it that way; test real uploads by hand and delete the test specimen afterwards, which removes its files.
+- `test/photos.spec.ts` and `test/publish.spec.ts` **mock every photo and publish endpoint (and image URL) with `page.route`**, because a real upload or publish commits to the public Pages repo (and saving publish settings would overwrite the owner's). Keep it that way; test real uploads by hand and delete the test specimen afterwards, which removes its files.
 
 ## Commands
 

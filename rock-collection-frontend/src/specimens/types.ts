@@ -110,6 +110,8 @@ export interface Photo {
   /** Path inside the Pages repo. */
   fileName: string;
   url: string;
+  /** Small copy (480px), for tiles and the public site's index. */
+  smallUrl: string;
   caption: string | null;
   /** 0 is the cover, which the table thumbnail is made from. */
   position: number;
@@ -199,4 +201,34 @@ export interface SpecimenDetail {
   published: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Keys of the global publish checkboxes (PublishField on the backend). */
+export type PublishFieldKey = string;
+
+export interface PublishFieldSetting {
+  key: PublishFieldKey;
+  label: string;
+  /** Heading the checkbox is grouped under. */
+  group: string;
+  included: boolean;
+}
+
+export interface PublishSettings {
+  fields: PublishFieldSetting[];
+  intro: string | null;
+  lastPublishedAt: string | null;
+  /** Address of the public site; null when GitHub isn't set up. */
+  siteUrl: string | null;
+  publicCount: number;
+  totalCount: number;
+  gitHubConfigured: boolean;
+}
+
+export interface PublishResult {
+  /** False when the site was already up to date. */
+  changed: boolean;
+  specimenCount: number;
+  siteUrl: string;
+  publishedAt: string;
 }

@@ -5,6 +5,9 @@ import com.rockcollection.common.PageResponse;
 import com.rockcollection.material.MaterialDto;
 import com.rockcollection.material.MaterialService;
 import com.rockcollection.photo.*;
+import com.rockcollection.publish.PublishDto;
+import com.rockcollection.publish.PublishField;
+import com.rockcollection.publish.PublishService;
 import com.rockcollection.specimen.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +49,8 @@ class DatabaseIntegrationTest {
     private SpecimenPhotoRepository photoRepository;
     @Autowired
     private SpecimenThumbnailRepository thumbnailRepository;
+    @Autowired
+    private PublishService publishService;
 
     private Long materialId(String name) {
         return materialService.findAll().stream().filter(m -> m.name().equals(name)).findFirst().orElseThrow().id();
@@ -133,5 +138,27 @@ class DatabaseIntegrationTest {
         specimenService.delete(id);
         assertThat(photoRepository.findBySpecimenIdOrderByPositionAscIdAsc(id)).isEmpty();
         assertThat(thumbnailRepository.findById(id)).isEmpty();
+    }
+
+    @Test
+    void publishSettingsArePersistedAndAllSpecimensCanBeMadePublic() {
+        PublishDto.Settings defaults = publishService.settings();
+        assertThat(defaults.fields()).filteredOn(PublishDto.Field::included).extracting(PublishDto.Field::key)
+                .contains(PublishField.HARDNESS).doesNotContain(PublishField.PRICE);
+
+        publishService.updateSettings(new PublishDto.SettingsRequest(java.util.EnumSet.of(PublishField.STREAK), "Hello"));
+        assertThat(publishService.settings().fields()).filteredOn(PublishDto.Field::included)
+                .extracting(PublishDto.Field::key).containsExactly(PublishField.STREAK);
+        assertThat(publishService.settings().intro()).isEqualTo("Hello");
+
+        Long hidden = specimenService.create(JsonMapper.builder().build()
+                .readValue("{\"name\": \"Hidden\", \"published\": false}", SpecimenDto.Request.class)).id();
+        assertThat(specimenService.findById(hidden).published()).isFalse();
+        PublishDto.Settings after = publishService.publishAllSpecimens();
+        assertThat(specimenService.findById(hidden).published()).isTrue();
+        assertThat(after.publicCount()).isEqualTo(after.totalCount());
+
+        assertThat(photoRepository.findBySpecimenIdInOrderBySpecimenIdAscPositionAscIdAsc(List.of(hidden))).isEmpty();
+        specimenService.delete(hidden);
     }
 }

@@ -4,11 +4,12 @@ import { test, expect, Page, APIRequestContext } from '@playwright/test';
 const API = process.env.API_BASE_URL ?? 'http://localhost:8080/api';
 const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
-interface MockPhoto { id: number; fileName: string; url: string; caption: string | null; position: number; width: number; height: number }
+interface MockPhoto { id: number; fileName: string; url: string; smallUrl: string; caption: string | null; position: number; width: number; height: number }
 
 const photo = (specimenId: number, id: number, position: number): MockPhoto => ({
   id, fileName: `photos/${specimenId}/${specimenId}-${id}.jpg`,
   url: `https://raw.githubusercontent.com/test/pages/main/photos/${specimenId}/${specimenId}-${id}.jpg`,
+  smallUrl: `https://raw.githubusercontent.com/test/pages/main/photos/${specimenId}/${specimenId}-${id}-small.jpg`,
   caption: null, position, width: 1600, height: 1200,
 });
 
@@ -117,7 +118,7 @@ test('Details: upload photos, make one the cover and delete one', async ({ page 
 
   await section.getByRole('button', { name: 'Make photo 2 the cover' }).click();
   await expect.poll(() => newOrder).toEqual([2, 1]);
-  await expect(section.getByRole('button', { name: 'Open photo 1' }).locator('img')).toHaveAttribute('src', /-2\.jpg$/);
+  await expect(section.getByRole('button', { name: 'Open photo 1' }).locator('img')).toHaveAttribute('src', /-2-small\.jpg$/);
 
   await section.getByRole('button', { name: 'Delete photo 2' }).click(); // now the original first photo
   await page.getByRole('dialog', { name: 'Delete this photo?' }).getByRole('button', { name: 'Delete' }).click();

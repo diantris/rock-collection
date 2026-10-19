@@ -53,6 +53,12 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!-- Logic-less HTML templates for the public site (escapes HTML by default) -->
+        <dependency>
+            <groupId>com.samskivert</groupId>
+            <artifactId>jmustache</artifactId>
+            <version>1.16</version>
+        </dependency>
         <!-- Photo resizing; applies the EXIF orientation, and re-encoding drops all metadata (incl. GPS) -->
         <dependency>
             <groupId>net.coobird</groupId>

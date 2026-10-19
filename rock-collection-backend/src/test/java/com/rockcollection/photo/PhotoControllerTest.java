@@ -28,7 +28,7 @@ class PhotoControllerTest {
     @Test
     void upload_returnsAllPhotos() throws Exception {
         when(photoService.upload(eq(7L), anyList())).thenReturn(List.of(
-                new PhotoDto(1L, "photos/7/7-abc.jpg", "https://raw.test/photos/7/7-abc.jpg", null, 0, 1600, 1200)));
+                new PhotoDto(1L, "photos/7/7-abc.jpg", "https://raw.test/photos/7/7-abc.jpg", "https://raw.test/photos/7/7-abc-small.jpg", null, 0, 1600, 1200)));
 
         mvc.perform(multipart("/api/specimens/7/photos")
                         .file(new MockMultipartFile("files", "a.jpg", "image/jpeg", new byte[]{1}))

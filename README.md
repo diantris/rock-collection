@@ -18,6 +18,7 @@ A personal catalogue of a rock, mineral and cabochon collection, built to help i
 - Observed properties per specimen (hardness, streak, luster, specific gravity, optical effects, …) as evidence for identification
 - Reference list of materials with type, family, mineral group and crystal system
 - Photos: resized, stripped of EXIF/GPS metadata and stored in the public site's GitHub repo, with a table thumbnail and a swipeable gallery
+- A "Publish" button that generates a static public site on GitHub Pages, with one global choice of which fields to show (private notes are never published)
 
 ## Getting Started
 

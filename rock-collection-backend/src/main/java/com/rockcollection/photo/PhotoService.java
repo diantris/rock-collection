@@ -52,7 +52,8 @@ public class PhotoService {
     }
 
     /**
-     * Resizes the photos, strips their metadata and commits them all to the Pages repo in one commit.
+     * Resizes the photos, strips their metadata and commits them all to the Pages repo in one commit,
+     * each with a small copy for the public site's index.
      * The first photo of a specimen that had none also becomes its thumbnail.
      */
     public List<PhotoDto> upload(Long specimenId, List<MultipartFile> files) {
@@ -70,6 +71,7 @@ public class PhotoService {
             ImageProcessor.Image image = process(file);
             String path = "photos/%d/%d-%s.jpg".formatted(specimenId, specimenId, randomSuffix());
             uploads.put(path, image.data());
+            uploads.put(SpecimenPhoto.smallFileName(path), imageProcessor.toSmallPhoto(image.data()).data());
             created.add(new SpecimenPhoto(specimenId, path, position++, image.width(), image.height()));
         }
 
@@ -106,7 +108,7 @@ public class PhotoService {
                 .orElseThrow(() -> new NotFoundException("Photo", photoId));
         boolean wasCover = photos.getFirst() == photo;
 
-        gitHub.commit("Remove a photo from specimen #" + specimenId, Map.of(), List.of(photo.getFileName()));
+        gitHub.commit("Remove a photo from specimen #" + specimenId, Map.of(), photo.getAllFileNames());
         photoRepository.delete(photo);
         photos.remove(photo);
         for (int i = 0; i < photos.size(); i++) photos.get(i).setPosition(i);
@@ -118,7 +120,7 @@ public class PhotoService {
      * (its photo and thumbnail rows go with it). Best effort: if GitHub can't be reached the files stay behind.
      */
     public void deleteAllFiles(Long specimenId) {
-        List<String> paths = photos(specimenId).stream().map(SpecimenPhoto::getFileName).toList();
+        List<String> paths = photos(specimenId).stream().flatMap(p -> p.getAllFileNames().stream()).toList();
         if (paths.isEmpty()) return;
         try {
             gitHub.commit("Remove the photos of deleted specimen #" + specimenId, Map.of(), paths);
@@ -170,7 +172,7 @@ public class PhotoService {
     }
 
     private List<PhotoDto> toDtos(List<SpecimenPhoto> photos) {
-        return photos.stream().map(p -> PhotoDto.from(p, gitHub.rawUrl(p.getFileName()))).toList();
+        return photos.stream().map(p -> PhotoDto.from(p, gitHub.rawUrl(p.getFileName()), gitHub.rawUrl(p.getSmallFileName()))).toList();
     }
 
     private void requireSpecimen(Long specimenId) {

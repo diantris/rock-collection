@@ -3,6 +3,8 @@ package com.rockcollection.photo;
 
 import jakarta.persistence.*;
 
+import java.util.List;
+
 /** The app only keeps the photo's path in the Pages repo and its place in the gallery, not the image itself. */
 @Entity
 @Table(name = "specimen_photo")
@@ -31,6 +33,20 @@ public class SpecimenPhoto {
         this.position = position;
         this.width = width;
         this.height = height;
+    }
+
+    /** The small copy for the public site's index, next to the full photo: {@code …/142-3f9a1c2e-small.jpg}. */
+    public String getSmallFileName() {
+        return smallFileName(fileName);
+    }
+
+    static String smallFileName(String fileName) {
+        return fileName.replaceFirst("\\.jpg$", "-small.jpg");
+    }
+
+    /** Both files this photo has in the Pages repo. */
+    public List<String> getAllFileNames() {
+        return List.of(fileName, getSmallFileName());
     }
 
     public Long getId() { return id; }

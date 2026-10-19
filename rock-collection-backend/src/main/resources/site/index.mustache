@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+{{> head}}
+</head>
+<body>
+<main class="page">
+  <header class="site-header">
+    <h1>Rock Collection</h1>
+    {{#intro}}
+    <p class="intro">{{.}}</p>
+    {{/intro}}
+    <p class="stats">{{countLabel}}{{#showIdentity}} · {{unidentifiedCount}} still unidentified{{/showIdentity}}</p>
+  </header>
+
+  {{#hasCards}}
+  <div class="toolbar" data-filters hidden>
+    <input type="search" class="search" placeholder="Search by name{{#showIdentity}} or material{{/showIdentity}}, or #number" aria-label="Search specimens" data-filter-search>
+    {{#showIdentity}}
+    <button type="button" class="chip chip-toggle" aria-pressed="false" data-filter-unidentified>Unidentified only</button>
+    {{/showIdentity}}
+    <span class="toolbar-count" aria-live="polite" data-filter-count></span>
+  </div>
+  {{/hasCards}}
+
+  <ul class="cards">
+    {{#cards}}
+    <li class="card" data-search="{{search}}" data-unidentified="{{unidentified}}">
+      <a href="{{href}}">
+        {{#image}}<img class="card-image" src="{{.}}" alt="" loading="lazy">{{/image}}
+        {{^image}}<span class="card-image card-image-empty" aria-hidden="true"></span>{{/image}}
+        <span class="card-body">
+          <span class="card-number">#{{id}}</span>
+          <span class="card-name">{{name}}</span>
+          {{#identity}}<span class="card-identity">{{.}}</span>{{/identity}}
+          {{#unidentified}}<span class="badge">Unidentified</span>{{/unidentified}}
+        </span>
+      </a>
+    </li>
+    {{/cards}}
+  </ul>
+  {{^cards}}
+  <p class="empty">Nothing has been published yet.</p>
+  {{/cards}}
+  <p class="empty" data-filter-empty hidden>No specimens match.</p>
+</main>
+<script src="assets/site.js"></script>
+</body>
+</html>

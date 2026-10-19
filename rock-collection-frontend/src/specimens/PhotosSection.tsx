@@ -104,7 +104,7 @@ const PhotosSection: React.FC<Props> = ({ specimenId, specimenName, onChanged })
             <Box key={p.id} sx={{ position: 'relative', width: TILE, height: TILE }}>
               <ButtonBase aria-label={`Open photo ${i + 1}`} onClick={() => setGalleryIndex(i)}
                 sx={{ width: '100%', height: '100%', borderRadius: 2, overflow: 'hidden', bgcolor: t => t.vars?.palette.m3.surfaceContainerHighest }}>
-                <Box component="img" src={p.url} alt="" loading="lazy" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <Box component="img" src={p.smallUrl} alt="" loading="lazy" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </ButtonBase>
               {i === 0 ? (
                 <Chip label="Cover" size="small" color="primary" sx={{ position: 'absolute', left: 4, bottom: 4, height: 20 }} />

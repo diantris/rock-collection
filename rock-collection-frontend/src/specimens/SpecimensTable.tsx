@@ -10,6 +10,7 @@ import PhotoGallery from './PhotoGallery';
 import SpecimenFormDialog from './SpecimenFormDialog';
 import SpecimenDetailDialog from './SpecimenDetailDialog';
 import AddMaterialDialog from './AddMaterialDialog';
+import PublishDialog from './PublishDialog';
 import DeleteSpecimenDialog from './DeleteSpecimenDialog';
 import ColumnPicker from './ColumnPicker';
 import { COLUMNS, ColumnDef, loadVisibleColumns, saveVisibleColumns } from './columns';
@@ -40,6 +41,7 @@ const SpecimensTable: React.FC = () => {
   const [detailId, setDetailId] = useState<number | null>(null);
   const [detailRefresh, setDetailRefresh] = useState(0);
   const [addMaterialOpen, setAddMaterialOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
   const [toDelete, setToDelete] = useState<{ id: number; name: string } | null>(null);
   // Gallery opened straight from a table photo
   const [gallery, setGallery] = useState<{ name: string; photos: Photo[] } | null>(null);
@@ -102,6 +104,7 @@ const SpecimensTable: React.FC = () => {
         <Button variant="contained" onClick={() => setFormTarget('new')}>Add a specimen</Button>
         <Button variant="outlined" onClick={() => setAddMaterialOpen(true)}>Add a material</Button>
         <Box sx={{ flexGrow: 1 }} />
+        <Button variant="outlined" onClick={() => setPublishOpen(true)}>Publish</Button>
         <ColumnPicker visible={visibleIds} onChange={handleColumnsChange} />
       </Stack>
 
@@ -197,6 +200,7 @@ const SpecimensTable: React.FC = () => {
       />
       <PhotoGallery photos={gallery?.photos ?? []} startIndex={gallery ? 0 : null} title={gallery?.name ?? ''}
         onClose={() => setGallery(null)} />
+      <PublishDialog open={publishOpen} onClose={() => setPublishOpen(false)} onSpecimensChanged={load} />
       <AddMaterialDialog open={addMaterialOpen} onClose={() => setAddMaterialOpen(false)} onCreated={() => setAddMaterialOpen(false)} />
       <DeleteSpecimenDialog
         specimen={toDelete}
