@@ -6,6 +6,7 @@ import {
   useMediaQuery, useTheme,
 } from '@mui/material';
 import { fetchSpecimen } from './api';
+import PhotosSection from './PhotosSection';
 import {
   ACQUISITION_LABELS, CERTAINTY_LABELS, CRYSTAL_SYSTEM_LABELS, FAMILY_LABELS, FORM_LABELS, MATERIAL_CATEGORY_LABELS,
   NATURE_LABELS, OPTICAL_EFFECT_LABELS, ROLE_LABELS, SPECIAL_PROPERTY_LABELS, SpecimenDetail,
@@ -18,6 +19,8 @@ interface Props {
   onClose: () => void;
   onEdit: (id: number) => void;
   onDelete: (specimen: SpecimenDetail) => void;
+  /** Photos were added, removed or reordered, so the table thumbnail may have changed. */
+  onPhotosChanged: () => void;
 }
 
 type Field = [label: string, value: React.ReactNode | null];
@@ -65,7 +68,7 @@ const Section: React.FC<{ title: string; fields: Field[]; children?: React.React
   );
 };
 
-const SpecimenDetailDialog: React.FC<Props> = ({ specimenId, refreshKey = 0, onClose, onEdit, onDelete }) => {
+const SpecimenDetailDialog: React.FC<Props> = ({ specimenId, refreshKey = 0, onClose, onEdit, onDelete, onPhotosChanged }) => {
   const fullScreen = useMediaQuery(useTheme().breakpoints.down('sm'));
   const [specimen, setSpecimen] = useState<SpecimenDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +99,8 @@ const SpecimenDetailDialog: React.FC<Props> = ({ specimenId, refreshKey = 0, onC
                 {s.tags.map(t => <Chip key={t} size="small" label={t} />)}
               </Stack>
             )}
+
+            <PhotosSection specimenId={s.id} specimenName={s.name} onChanged={onPhotosChanged} />
 
             <Section title="Scientific identity" fields={[
               ['Form', s.form && FORM_LABELS[s.form]],

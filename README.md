@@ -17,6 +17,7 @@ A personal catalogue of a rock, mineral and cabochon collection, built to help i
 - Specimens with a name, market name and a scientific identity made of several materials (host, inclusions, matrix…), each confirmed or tentative
 - Observed properties per specimen (hardness, streak, luster, specific gravity, optical effects, …) as evidence for identification
 - Reference list of materials with type, family, mineral group and crystal system
+- Photos: resized, stripped of EXIF/GPS metadata and stored in the public site's GitHub repo, with a table thumbnail and a swipeable gallery
 
 ## Getting Started
 
@@ -25,6 +26,10 @@ A personal catalogue of a rock, mineral and cabochon collection, built to help i
 - [Docker Desktop](https://www.docker.com/get-started/)
 - [Node.js 24](https://nodejs.org/) (frontend development; Yarn 1 runs via `corepack yarn`)
 - [JDK 25](https://adoptium.net/) (backend development; Maven is provided by `./mvnw`)
+
+### GitHub token for photos
+
+Photos are stored in the public site's repo ([diantris/rock-collection-page](https://github.com/diantris/rock-collection-page)). To upload them, copy `.env.example` to `.env` (git ignores it) and set `GITHUB_TOKEN` to a fine-grained personal access token limited to that repo, with the permission *Contents: Read and write*. Everything else works without it.
 
 ### Running everything with Docker Compose
 

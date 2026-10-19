@@ -1,18 +1,19 @@
 // SpecimensTable.tsx - Paginated, server-sorted specimen table with selectable columns and add/delete actions
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert, Box, Button, CircularProgress, IconButton, Paper, Stack, SxProps, Table, TableBody, TableCell,
+  Alert, Box, Button, ButtonBase, CircularProgress, IconButton, Paper, Stack, SxProps, Table, TableBody, TableCell,
   TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Theme, Typography,
 } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
-import { deleteSpecimen, fetchSpecimens } from './api';
+import { deleteSpecimen, fetchPhotos, fetchSpecimens } from './api';
+import PhotoGallery from './PhotoGallery';
 import SpecimenFormDialog from './SpecimenFormDialog';
 import SpecimenDetailDialog from './SpecimenDetailDialog';
 import AddMaterialDialog from './AddMaterialDialog';
 import DeleteSpecimenDialog from './DeleteSpecimenDialog';
 import ColumnPicker from './ColumnPicker';
 import { COLUMNS, ColumnDef, loadVisibleColumns, saveVisibleColumns } from './columns';
-import { Order, Page, SpecimenSortKey, SpecimenSummary } from './types';
+import { Order, Page, Photo, SpecimenSortKey, SpecimenSummary } from './types';
 
 /** Styles freezing a column on the left while the rest of the table scrolls sideways. */
 function stickySx(col: ColumnDef, left: number | undefined, header: boolean): SxProps<Theme> {
@@ -26,6 +27,8 @@ function stickySx(col: ColumnDef, left: number | undefined, header: boolean): Sx
 const SpecimensTable: React.FC = () => {
   const [data, setData] = useState<Page<SpecimenSummary> | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Dismissible warning that survives reloads, e.g. photos that failed to upload
+  const [notice, setNotice] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [sortBy, setSortBy] = useState<SpecimenSortKey>('id');
@@ -38,6 +41,8 @@ const SpecimensTable: React.FC = () => {
   const [detailRefresh, setDetailRefresh] = useState(0);
   const [addMaterialOpen, setAddMaterialOpen] = useState(false);
   const [toDelete, setToDelete] = useState<{ id: number; name: string } | null>(null);
+  // Gallery opened straight from a table photo
+  const [gallery, setGallery] = useState<{ name: string; photos: Photo[] } | null>(null);
 
   useEffect(() => setVisibleIds(loadVisibleColumns()), []);
 
@@ -68,6 +73,20 @@ const SpecimensTable: React.FC = () => {
     saveVisibleColumns(ids);
   };
 
+  const openGallery = (s: SpecimenSummary) => {
+    fetchPhotos(s.id).then(photos => setGallery({ name: s.name, photos })).catch(err => setNotice(err.message));
+  };
+
+  /** Cell content; a table photo opens the gallery instead of the details. */
+  const cell = (col: ColumnDef, s: SpecimenSummary) => {
+    if (col.id !== 'photo' || s.thumbnailVersion === null) return col.render(s);
+    return (
+      <ButtonBase aria-label={`Photos of ${s.name}`} onClick={e => { e.stopPropagation(); openGallery(s); }} sx={{ borderRadius: 2 }}>
+        {col.render(s)}
+      </ButtonBase>
+    );
+  };
+
   const handleSort = (key: SpecimenSortKey) => {
     setOrder(sortBy === key && order === 'asc' ? 'desc' : 'asc');
     setSortBy(key);
@@ -87,6 +106,7 @@ const SpecimensTable: React.FC = () => {
       </Stack>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>Error: {error}</Alert>}
+      {notice && <Alert severity="warning" sx={{ mb: 2 }} onClose={() => setNotice(null)}>{notice}</Alert>}
 
       <Paper variant="outlined">
         {/* Scrolls sideways when the chosen columns don't fit; sticky columns stay put */}
@@ -127,7 +147,7 @@ const SpecimensTable: React.FC = () => {
                   {columns.map(col => (
                     <TableCell key={col.id} sx={stickySx(col, stickyLeft[col.id], false)}
                       title={col.id === 'name' ? s.name : undefined}>
-                      {col.render(s)}
+                      {cell(col, s)}
                     </TableCell>
                   ))}
                   <TableCell align="right">
@@ -156,7 +176,8 @@ const SpecimensTable: React.FC = () => {
         specimenId={typeof formTarget === 'number' ? formTarget : null}
         onClose={() => setFormTarget(null)}
         onAdded={load}
-        onSaved={saved => {
+        onSaved={(saved, photoError) => {
+          if (photoError) setNotice(`“${saved.name}” was added, but its photos weren’t: ${photoError} You can add them from its details.`);
           // After editing, return to the (refreshed) details; after adding, just show the updated table
           if (typeof formTarget === 'number') {
             setDetailId(saved.id);
@@ -172,7 +193,10 @@ const SpecimensTable: React.FC = () => {
         onClose={() => setDetailId(null)}
         onEdit={id => setFormTarget(id)}
         onDelete={s => setToDelete(s)}
+        onPhotosChanged={load}
       />
+      <PhotoGallery photos={gallery?.photos ?? []} startIndex={gallery ? 0 : null} title={gallery?.name ?? ''}
+        onClose={() => setGallery(null)} />
       <AddMaterialDialog open={addMaterialOpen} onClose={() => setAddMaterialOpen(false)} onCreated={() => setAddMaterialOpen(false)} />
       <DeleteSpecimenDialog
         specimen={toDelete}

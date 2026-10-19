@@ -1,14 +1,16 @@
 // SpecimenFormDialog.tsx - Full add/edit form for a specimen. Only the name is required; everything else
 // lives in collapsible sections so quick entry stays short and measurements can be added later.
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Accordion, AccordionDetails, AccordionSummary, Alert, Autocomplete, Box, Button, Chip, CircularProgress, Dialog,
   DialogActions, DialogContent, DialogTitle, FormControlLabel, IconButton, MenuItem, Stack, Switch, TextField, Typography,
   createFilterOptions, useMediaQuery, useTheme,
 } from '@mui/material';
+import AddPhotoAlternateOutlinedIcon from '@mui/icons-material/AddPhotoAlternateOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { ApiError, createSpecimen, fetchMaterials, fetchSpecimen, fetchTags, updateSpecimen } from './api';
+import { ApiError, createSpecimen, fetchMaterials, fetchSpecimen, fetchTags, updateSpecimen, uploadPhotos } from './api';
+import { PHOTO_TYPES } from './PhotosSection';
 import AddMaterialDialog from './AddMaterialDialog';
 import {
   ACQUISITION_LABELS, AcquisitionType, CERTAINTY_LABELS, ComponentRole, FORM_LABELS, IdentificationCertainty, Material,
@@ -25,7 +27,8 @@ interface Props {
   /** Edit this specimen; omit to add a new one. */
   specimenId?: number | null;
   onClose: () => void;
-  onSaved: (specimen: SpecimenDetail) => void;
+  /** @param photoError set when the specimen was added but its photos couldn't be uploaded */
+  onSaved: (specimen: SpecimenDetail, photoError?: string) => void;
   /** Called after "Add & next" saved a specimen while the dialog stays open. */
   onAdded?: () => void;
 }
@@ -108,6 +111,10 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
   const [newMaterial, setNewMaterial] = useState<{ index: number; name: string } | null>(null);
   // Name of the specimen just saved with "Add & next", shown as confirmation
   const [lastAdded, setLastAdded] = useState<string | null>(null);
+  // Photos chosen while adding; uploaded once the specimen exists (in edit mode they're managed in the details)
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [photoWarning, setPhotoWarning] = useState<string | null>(null);
+  const photoInput = useRef<HTMLInputElement>(null);
 
   // (Re)load everything each time the dialog opens
   useEffect(() => {
@@ -115,6 +122,8 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
     setError(null);
     setFieldErrors({});
     setLastAdded(null);
+    setPhotoFiles([]);
+    setPhotoWarning(null);
     fetchMaterials().then(setMaterials).catch(() => setMaterials([]));
     fetchTags().then(setKnownTags).catch(() => setKnownTags([]));
     if (!isEdit) {
@@ -174,8 +183,18 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
     setSaving(true);
     setError(null);
     setFieldErrors({});
+    setPhotoWarning(null);
     try {
       const saved = isEdit ? await updateSpecimen(specimenId!, toRequest()) : await createSpecimen(toRequest());
+      // The specimen is saved by now; a failed upload is reported, but doesn't undo it
+      let photoError: string | undefined;
+      if (!isEdit && photoFiles.length > 0) {
+        try {
+          await uploadPhotos(saved.id, photoFiles);
+        } catch (e) {
+          photoError = (e as Error).message;
+        }
+      }
       if (addAnother) {
         setForm(prev => ({
           ...emptyForm(),
@@ -184,10 +203,12 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
           currency: prev.currency, tags: prev.tags,
         }));
         setComponents([]);
+        setPhotoFiles([]);
         setLastAdded(saved.name);
+        if (photoError) setPhotoWarning(`“${saved.name}” was added, but its photos weren’t: ${photoError} You can add them from its details.`);
         onAdded?.();
       } else {
-        onSaved(saved);
+        onSaved(saved, photoError);
       }
     } catch (e) {
       if (e instanceof ApiError) setFieldErrors(e.fieldErrors);
@@ -259,6 +280,7 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
       <DialogContent>
         {loading ? <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box> : (
           <Stack sx={{ gap: 2, pt: 1 }}>
+            {photoWarning && <Alert severity="warning" onClose={() => setPhotoWarning(null)}>{photoWarning}</Alert>}
             {lastAdded && (
               <Alert severity="success" onClose={() => setLastAdded(null)}>
                 Added “{lastAdded}”. Where you got it and the tags are kept for the next one.
@@ -275,6 +297,21 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
                 renderInput={params => <TextField {...params} label="Tags" helperText="Type and press Enter" />} />,
             )}
             {row(enumSelect('form', 'Form', FORM_LABELS), enumSelect('nature', 'Nature', NATURE_LABELS))}
+            {!isEdit && (
+              <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Button variant="outlined" startIcon={<AddPhotoAlternateOutlinedIcon />} onClick={() => photoInput.current?.click()}>
+                  Choose photos
+                </Button>
+                <input ref={photoInput} type="file" accept={PHOTO_TYPES} multiple hidden aria-label="Photo files"
+                  onChange={e => { const chosen = Array.from(e.target.files ?? []); setPhotoFiles(prev => [...prev, ...chosen]); e.target.value = ''; }} />
+                {photoFiles.length === 0 && (
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>Optional; the first becomes the table photo</Typography>
+                )}
+                {photoFiles.map((f, i) => (
+                  <Chip key={`${f.name}-${i}`} size="small" label={f.name} onDelete={() => setPhotoFiles(prev => prev.filter((_, j) => j !== i))} />
+                ))}
+              </Stack>
+            )}
 
             <Box>
               {section('Scientific identity', SECTIONS.identity, <>

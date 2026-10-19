@@ -1,5 +1,5 @@
 // api.ts - Fetch-based client for the backend REST API
-import { Material, MaterialRequest, Order, Page, SpecimenDetail, SpecimenRequest, SpecimenSortKey, SpecimenSummary } from './types';
+import { Material, MaterialRequest, Order, Page, Photo, SpecimenDetail, SpecimenRequest, SpecimenSortKey, SpecimenSummary } from './types';
 
 // NEXT_PUBLIC_ variables are inlined into the browser bundle at build time
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
@@ -14,7 +14,8 @@ export class ApiError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: init?.body ? { 'Content-Type': 'application/json', ...init.headers } : init?.headers,
+    // JSON bodies are strings; FormData sets its own multipart Content-Type
+    headers: typeof init?.body === 'string' ? { 'Content-Type': 'application/json', ...init.headers } : init?.headers,
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -61,4 +62,30 @@ export function fetchMaterials(): Promise<Material[]> {
 
 export function createMaterial(body: MaterialRequest): Promise<Material> {
   return request('/api/materials', { method: 'POST', body: JSON.stringify(body) });
+}
+
+/** A specimen's photos, cover first. */
+export function fetchPhotos(specimenId: number): Promise<Photo[]> {
+  return request(`/api/specimens/${specimenId}/photos`);
+}
+
+/** Uploads photos (resized and stripped of EXIF/GPS on the server, then pushed to the Pages repo); returns all photos. */
+export function uploadPhotos(specimenId: number, files: File[]): Promise<Photo[]> {
+  const body = new FormData();
+  for (const file of files) body.append('files', file);
+  return request(`/api/specimens/${specimenId}/photos`, { method: 'POST', body });
+}
+
+/** @param photoIds every photo id in the new order; the first becomes the cover */
+export function reorderPhotos(specimenId: number, photoIds: number[]): Promise<Photo[]> {
+  return request(`/api/specimens/${specimenId}/photos/order`, { method: 'PUT', body: JSON.stringify(photoIds) });
+}
+
+export function deletePhoto(specimenId: number, photoId: number): Promise<void> {
+  return request(`/api/specimens/${specimenId}/photos/${photoId}`, { method: 'DELETE' });
+}
+
+/** URL of the table thumbnail; the version makes browsers fetch it again only when it changed. */
+export function thumbnailUrl(specimenId: number, version: number): string {
+  return `${API_BASE}/api/specimens/${specimenId}/thumbnail?v=${version}`;
 }

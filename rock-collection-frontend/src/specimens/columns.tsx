@@ -1,7 +1,8 @@
 // columns.tsx - Column definitions for the specimen table, and the column picker's persisted selection
 import React from 'react';
-import { Chip, Stack, Tooltip, Typography } from '@mui/material';
+import { Box, Chip, Stack, Tooltip, Typography } from '@mui/material';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import { thumbnailUrl } from './api';
 import {
   ACQUISITION_LABELS, CERTAINTY_LABELS, Component, FAMILY_LABELS, FORM_LABELS, MATERIAL_CATEGORY_LABELS, NATURE_LABELS,
   ROLE_LABELS, SpecimenSortKey, SpecimenSummary,
@@ -39,14 +40,20 @@ export interface ColumnDef {
   render: (s: SpecimenSummary) => React.ReactNode;
 }
 
+/** On-screen size of the table photo; the server makes 192px thumbnails, so they stay sharp on high-DPI screens. */
+export const THUMBNAIL_SIZE = 48;
+
 const orUnknown = (value: React.ReactNode) => (value === null || value === undefined || value === '' ? <Unknown /> : value);
 
 export const COLUMNS: ColumnDef[] = [
   { id: 'id', label: '#', sortKey: 'id', defaultVisible: true, sticky: true, width: 80, render: s => s.id },
   {
     id: 'photo', label: 'Photo', defaultVisible: true, sticky: true, width: 80,
-    // Thumbnails arrive with the photo pipeline (roadmap step 3)
-    render: () => <ImageOutlinedIcon aria-label="No photo yet" sx={{ color: 'text.disabled' }} />,
+    // The table makes this cell open the gallery when there's a photo
+    render: s => s.thumbnailVersion === null
+      ? <ImageOutlinedIcon aria-label="No photo yet" sx={{ color: 'text.disabled', display: 'block', mx: '6px' }} />
+      : <Box component="img" src={thumbnailUrl(s.id, s.thumbnailVersion)} alt="" width={THUMBNAIL_SIZE} height={THUMBNAIL_SIZE}
+          sx={{ display: 'block', borderRadius: 2, objectFit: 'cover' }} />,
   },
   { id: 'name', label: 'Name', sortKey: 'name', defaultVisible: true, sticky: true, width: 220, render: s => s.name },
   { id: 'marketName', label: 'Market name', sortKey: 'marketName', defaultVisible: true, render: s => orUnknown(s.marketName) },

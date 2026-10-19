@@ -28,12 +28,12 @@ The main purpose of the public site is **crowd-sourced identification**: the own
 
 ### Publishing
 
-- **Where the site lives:** a **separate public GitHub repo**. It doesn't exist yet and isn't needed until roadmap step 4.
+- **Where the site lives:** a **separate public GitHub repo**, [`diantris/rock-collection-page`](https://github.com/diantris/rock-collection-page) (branch `main`, served at <https://diantris.github.io/rock-collection-page/>). Until step 4 it only holds a README and the uploaded photos (`photos/{specimenId}/…`).
 - **This repo is public too.** The `rockuser` / `rockpass` credentials in it are local-dev defaults only. Real deployments (GCP) must use different credentials supplied through env vars or Secret Manager. Never commit real secrets, tokens or the owner's personal data here.
 - **How it's triggered:** a **"Publish" button in the private app**. No local scripts are involved.
 - **What publish does:** the backend regenerates the whole site (HTML/CSS/JS plus data) from the current DB state. It pushes the result as **one commit** to the Pages repo through the GitHub API (the Git Data API: create a tree, then a commit, then update the ref), not one commit per file.
 - **Repeated publishes:** publishing again replaces the generated pages but leaves the photos alone.
-- **GitHub token:** a fine-grained personal access token scoped to the Pages repo only (contents: read/write). It comes from configuration (an env var, or Secret Manager on GCP) and is never committed.
+- **GitHub token:** a fine-grained personal access token scoped to the Pages repo only (permission *Contents: Read and write*; *Metadata: Read-only* is added automatically). Locally it lives in the gitignored root `.env` (`GITHUB_TOKEN=…`, template in `.env.example`), which `docker compose` passes to the API; on GCP it will come from Secret Manager. Never commit it, and never ask the owner to paste it into the chat.
 
 ### Public site content
 
@@ -54,16 +54,17 @@ Keep data entry **low-friction**: sensible defaults, few required fields, no lon
 - **Provenance:** where or from whom it was acquired, the **seller's name** for it (kept separately from the actual identity), locality, and acquisition date.
 - **Almost every field is optional.** The UI, API and export must handle missing data gracefully: show "unknown", don't fail validation, and don't drop rows.
 
-## Current state (as of Day 7)
+## Current state (as of Day 8)
 
 **Already built:**
 - the specimen data model (roadmap step 1)
 - a REST API for specimens and materials
 - a server-paged, server-sorted specimen table with a column picker
 - the full add/edit form, the detail view and the Material You theme (roadmap step 2)
+- the photo pipeline (roadmap step 3): upload, resize, EXIF/GPS stripping, push to the Pages repo, DB thumbnails, the gallery
 
 **Not built yet:**
-- photos, thumbnails and the gallery
+- photo captions in the UI (the column exists, nothing edits it)
 - editing or deleting materials in the UI (the API supports both)
 - the publish settings table and the static export
 - GCP deployment
@@ -71,7 +72,7 @@ Keep data entry **low-friction**: sensible defaults, few required fields, no lon
 **Agreed roadmap:**
 1. ~~New specimen data model~~ (done, Day 7)
 2. ~~Full add/edit forms and the Material You restyle~~ (done, Day 7)
-3. Thumbnail upload and the photo pipeline
+3. ~~Thumbnail upload and the photo pipeline~~ (done, Day 8)
 4. Static site export with a gallery
 5. GCP deployment
 
@@ -118,18 +119,24 @@ Unknown specimens are the main use case. The owner records measurements and obse
   - `mineral_group` (free text), `crystal_system`, `formula`, `mindat_url`, and `description` (e.g. mindat's definition)
   - About 65 common materials are seeded. Only well-established classifications are filled in; anything uncertain is left NULL.
 - **`specimen_component`:** links a specimen to the materials it consists of, each with a `role` (HOST, INCLUSION, ASSOCIATED, MATRIX), a `certainty` (CONFIRMED, TENTATIVE, SELLER_CLAIM) and a `position`. A specimen with no components counts as **"unidentified"**.
-- **`specimen_photo`** (file name, caption, position) and **`specimen_thumbnail`** (bytea, kept in its own table): the tables exist, but nothing maps or uses them yet (roadmap step 3).
-- V1–V3 are the old rock/group schema, and V4 drops it. Never edit a migration that has run anywhere; always add `V{n+1}__*.sql`. (V4 was still edited on Day 7, because it hadn't run anywhere yet.)
+- **`specimen_photo`** (`photo/SpecimenPhoto`): `file_name` (path in the Pages repo, unique, e.g. `photos/142/142-3f9a1c2e.jpg`), `caption`, `position` (0 = cover) and the published `width` / `height`. It refers to the specimen by a plain `specimen_id` column; the `Specimen` entity has no photo collection.
+- **`specimen_thumbnail`** (`photo/SpecimenThumbnail`): one 192px square JPEG per specimen (`bytea`) plus `updated_at`, in its own table so specimen queries never load image bytes. It's made from the cover photo.
+- V1–V3 are the old rock/group schema, and V4 drops it. V5 adds the photo details (thumbnail `updated_at`, photo `width` / `height`, unique `file_name`). Never edit a migration that has run anywhere; always add `V{n+1}__*.sql`. (V4 was still edited on Day 7, because it hadn't run anywhere yet.)
 - **Type and family in the table** come from the specimen's primary component (`Specimen.primaryComponent()`: the first HOST component, otherwise the first component). With no components, both show as unknown.
 
 ### Backend (`com.rockcollection`, feature packages)
 
 - `specimen/` holds the entities `Specimen` and `SpecimenComponent`, the enums, the repositories, `SpecimenService` and `SpecimenController`, and `SpecimenDto` (records: `Request`, `Summary`, `Detail`, `Component`, `ComponentRequest`).
 - `material/` holds `Material`, `MaterialCategory`, the repository, the service, the controller and `MaterialDto`.
+- `photo/` holds the photo pipeline:
+  - `ImageProcessor` (Thumbnailator): web photos at most 1600px on the long edge (never enlarged), JPEG quality 0.85; thumbnails 192px square, centre-cropped. It applies the EXIF orientation, flattens transparency onto white, and re-encodes from pixels, so **no metadata survives** (EXIF, GPS, camera). Only formats ImageIO reads (JPEG, PNG, GIF, BMP); HEIC is refused with a 400.
+  - `PhotoService`: an upload processes every file first (a bad file fails the whole batch before anything is pushed), then commits them all in **one** commit, then saves the rows. The first photo of a specimen without photos becomes the thumbnail. Reordering so a different photo is first, or deleting the cover, remakes the thumbnail by downloading the new cover back from GitHub. Deleting a specimen also removes its files from the repo (best effort; it logs and carries on if GitHub is down). Random 8-hex file-name suffixes mean names never repeat.
+  - `PhotoController` under `/api/specimens/{id}` (see API).
+- `github/` holds `GitHubClient` (Git Data API: blobs, then tree, commit, ref update, so many files and deletions make one commit; also meant for publishing in step 4), `GitHubProperties` (`rockcollection.github.*`) and `GitHubException` (503). Without a token, photo uploads fail with a 503 that names `GITHUB_TOKEN`; everything else works.
 - `common/` holds `NotFoundException` (404), `ConflictException` (409) and `PageResponse<T>`.
 - `controller/GlobalExceptionHandler` produces the error bodies:
   - validation failures: 400 with `{field: message}`
-  - everything else: `{error: message}` with status 400, 404 or 409
+  - everything else: `{error: message}` with status 400, 404, 409, 413 (upload over 40 MB per file / 400 MB per request) or 503 (GitHub)
 - `config/WebConfig` sets CORS, open for `/api/**`.
 - **Service conventions:**
   - Entities never leave the service layer; controllers only see DTO records.
@@ -145,7 +152,12 @@ Unknown specimens are the main use case. The owner records measurements and obse
 | GET | `/api/specimens/tags` | Every tag in use, for autocomplete |
 | GET | `/api/specimens/{id}` | `Detail`, all fields including private ones |
 | POST / PUT | `/api/specimens[/{id}]` | `Request`. Only `name` is required. `components: [{materialId, role?, certainty?}]` replaces the whole list; `role` defaults to HOST and `certainty` to TENTATIVE. |
-| DELETE | `/api/specimens/{id}` | 204, or 404 if it doesn't exist |
+| DELETE | `/api/specimens/{id}` | 204, or 404 if it doesn't exist. Also removes the specimen's photos from the Pages repo. |
+| GET | `/api/specimens/{id}/photos` | Photos, cover first: `{id, fileName, url, caption, position, width, height}`. `url` is a raw.githubusercontent.com link, which works as soon as the commit exists. |
+| POST | `/api/specimens/{id}/photos` | Multipart, one or more `files` parts. 201 with all photos. 400 for an unreadable image (named in the message), 503 without GitHub. |
+| PUT | `/api/specimens/{id}/photos/order` | Body: every photo id once, in the new order; the first becomes the cover. |
+| DELETE | `/api/specimens/{id}/photos/{photoId}` | 204; the next photo becomes the cover if needed |
+| GET | `/api/specimens/{id}/thumbnail?v=…` | The JPEG thumbnail, 404 if none. With `v` (the summary's `thumbnailVersion`) it's cached as immutable. |
 | GET/POST/PUT/DELETE | `/api/materials[/{id}]` | Returns 409 on a duplicate name, or when deleting a material that's still in use |
 
 ### Frontend (`rock-collection-frontend/src`)
@@ -165,6 +177,11 @@ Unknown specimens are the main use case. The owner records measurements and obse
   - Typing a material that isn't on the list offers "Add … as a new material", which opens `AddMaterialDialog` pre-filled.
   - **"Add & next"** saves the specimen and resets the form for the next one. It keeps the source, where-I-got-it, date, currency and tags, for batch entry.
   - PUT replaces every field, so the form always sends the full request.
+- **Photos:**
+  - The Photo column shows the thumbnail (`thumbnailVersion` in the summary; `null` means no photo). Clicking it opens `PhotoGallery` directly, not the details.
+  - `PhotoGallery` is the shared viewer: arrows, mobile-style dots (the current one is a wider pill), a counter, left/right keys and swipe, wrapping around. It's always near-black, whatever the colour scheme.
+  - `PhotosSection` sits at the top of the detail view: tiles, "Add photos" (button or drag and drop), "Make photo n the cover" and "Delete photo n" (with a confirm).
+  - The add form has "Choose photos"; they're uploaded right after the specimen is saved, including with "Add & next". If the upload fails, the specimen stays saved and a warning says to add the photos from its details.
 - `specimens/` also holds `AddMaterialDialog` and `DeleteSpecimenDialog`.
 - **Theme (`theme.ts`): Material You / M3.**
   - **Colours:** generated from `SEED_COLOR` by `@material/material-color-utilities` (`SchemeTonalSpot`). Change that one value to re-colour the whole app.
@@ -180,7 +197,9 @@ Unknown specimens are the main use case. The owner records measurements and obse
   - the table "Specimens"
   - the buttons "Add a specimen", "Add & next" and "Delete {name}"
   - the dialogs "Add a specimen", "Edit #{id}", "#{id} {name}" and "Add a material"
-  - the detail sections, which are regions named after their titles
+  - the detail sections, which are regions named after their titles (including "Photos")
+  - the photo controls: "Photos of {name}" (table photo), the dialog "{name} photos", "Previous photo" / "Next photo", "Photo n" (dots, `aria-current` on the shown one), "Close gallery", "Open photo n", "Make photo n the cover", "Delete photo n", the dialog "Delete this photo?", "Choose photos" and the file inputs labelled "Photo files"
+- `test/photos.spec.ts` **mocks every photo endpoint and image URL with `page.route`**, because a real upload pushes to the public Pages repo. Keep it that way; test real uploads by hand and delete the test specimen afterwards, which removes its files.
 
 ## Commands
 
@@ -221,6 +240,9 @@ The Playwright tests use `FRONTEND_URL` (default `http://localhost:3000`) and `A
 - **The naming strategy doesn't split a trailing single capital.** `weightG` maps to `weightg`, not `weight_g`. Give such fields an explicit `@Column(name = ...)`.
 - **`next.config.ts` lists `@material/material-color-utilities` in `transpilePackages`.** Version 0.4.0 has an ESM import without a file extension that Node can't resolve during SSR, which made `next build` fail inside Docker. Remove the workaround once upstream fixes it.
 - **Check the exit code of `docker compose build`.** A failed image build leaves the old container running, so tests silently run against stale code.
+- **MUI `Dialog` only forwards `aria-labelledby` to the paper** (the element with `role="dialog"`). An `aria-label` on `<Dialog>` lands on the backdrop root, so pass it through `slotProps.paper` (as `PhotoGallery` does).
+- **While a dialog is open (or fading out), the rest of the page is `aria-hidden`.** Role queries outside it find nothing, so wait for the dialog to be gone, or use CSS locators.
+- **GitHub's API caches unauthenticated reads for about a minute.** A `contents/` lookup can still show a just-deleted file; check the tree of the latest commit instead.
 - **Playwright accessible names match substrings** ("Name" also matches "Market name", "Where I got it" also matches "Country (where I got it)"). Use `exact: true` for field labels.
 - `.gitignore` excludes `package-lock.json`. Yarn is the package manager, and `yarn.lock` is committed.
 

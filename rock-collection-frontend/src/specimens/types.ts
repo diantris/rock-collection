@@ -100,6 +100,21 @@ export interface SpecimenSummary {
   currency: string | null;
   tags: string[];
   published: boolean;
+  /** Changes whenever the thumbnail does; null when the specimen has no photos. */
+  thumbnailVersion: number | null;
+}
+
+/** A full-size photo; the file lives in the public GitHub Pages repo. */
+export interface Photo {
+  id: number;
+  /** Path inside the Pages repo. */
+  fileName: string;
+  url: string;
+  caption: string | null;
+  /** 0 is the cover, which the table thumbnail is made from. */
+  position: number;
+  width: number | null;
+  height: number | null;
 }
 
 export interface Page<T> {
