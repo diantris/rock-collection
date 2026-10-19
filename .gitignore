@@ -139,3 +139,6 @@ replay_pid*
 /rock-collection-frontend/test-results
 # TypeScript incremental build info
 *.tsbuildinfo
+
+# Local secrets (GitHub token etc.) - see .env.example
+.env
