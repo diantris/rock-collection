@@ -132,6 +132,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
 - `material/` holds `Material`, `MaterialCategory`, the repository, the service, the controller and `MaterialDto`.
 - `photo/` holds the photo pipeline:
   - `ImageProcessor` (Thumbnailator): web photos at most 1600px on the long edge (never enlarged), JPEG quality 0.85; thumbnails 192px square, centre-cropped. It applies the EXIF orientation, flattens transparency onto white, and re-encodes from pixels, so **no metadata survives** (EXIF, GPS, camera). Only formats ImageIO reads (JPEG, PNG, GIF, BMP); HEIC is refused with a 400.
+    - **Built for a 1 GB VM:** an image far larger than needed is read with subsampling (keeping at least 1.5× the target size), so a 200 MP photo takes about as much memory as a 12 MP one; images over 250 MP (decompression bombs) are refused with a 400 before decoding; and a semaphore lets only **one image be processed at a time** (other uploads wait). Without these, a 48 MP photo or two simultaneous uploads ran a 320 MB heap out of memory.
   - Each upload also pushes a 480px `…-small.jpg` copy next to the full photo (same commit), for app tiles and the public index. `PhotoDto.smallUrl` points at it.
   - `PhotoService`: an upload processes every file first (a bad file fails the whole batch before anything is pushed), then commits them all in **one** commit, then saves the rows. The first photo of a specimen without photos becomes the thumbnail. Reordering so a different photo is first, or deleting the cover, remakes the thumbnail by downloading the new cover back from GitHub. Deleting a specimen also removes its files from the repo (best effort; it logs and carries on if GitHub is down). Random 8-hex file-name suffixes mean names never repeat.
   - `PhotoController` under `/api/specimens/{id}` (see API).
@@ -146,8 +147,10 @@ Unknown specimens are the main use case. The owner records measurements and obse
 - `common/` holds `NotFoundException` (404), `ConflictException` (409) and `PageResponse<T>`.
 - `controller/GlobalExceptionHandler` produces the error bodies:
   - validation failures: 400 with `{field: message}`
-  - everything else: `{error: message}` with status 400, 404, 409, 413 (upload over 40 MB per file / 400 MB per request) or 503 (GitHub)
-- `config/WebConfig` sets CORS, open for `/api/**`.
+  - everything else: `{error: message}` with status 400, 403 (missing app header, see below), 404, 409, 413 (upload over 40 MB per file / 400 MB per request) or 503 (GitHub)
+- `config/` holds the browser protections. There's no login (the network is the access control), so other web sites open in the owner's browser must not be able to use the API:
+  - `WebConfig`: CORS for `/api/**` only from `rockcollection.cors.allowed-origins` (env `CORS_ALLOWED_ORIGINS`, default `http://localhost:3000`). **On GCP set it to the frontend's real address.**
+  - `AppHeaderFilter`: every POST / PUT / PATCH / DELETE under `/api/` must carry `X-Rock-Collection` (any value), or it gets a 403. Browsers send a custom header cross-site only with CORS permission, so this also stops plain form POSTs from other sites (publish, photo upload). `api.ts` sends it; so must any script or `curl` that changes data.
 - **Service conventions:**
   - Entities never leave the service layer; controllers only see DTO records.
   - Blank strings are stored as `null`, so they show up as "unknown".
@@ -203,7 +206,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
   - **Extra colour roles:** M3 roles with no slot in MUI's palette (surface containers, outline, …) live under `theme.vars.palette.m3.*`.
   - **Component overrides:** pill buttons, 28px dialogs, 8px chips, tonal accordions.
   - **Typography:** Roboto via `next/font`, with the M3 type scale mapped onto the MUI variants (h4 = headline large, and so on).
-- API calls go in `specimens/api.ts`. It reads `NEXT_PUBLIC_API_URL`, which is baked in at build time (a Docker build arg) and defaults to `http://localhost:8080`. It throws `ApiError`, which carries any field errors.
+- API calls go in `specimens/api.ts`. It reads `NEXT_PUBLIC_API_URL`, which is baked in at build time (a Docker build arg) and defaults to `http://localhost:8080`. It throws `ApiError`, which carries any field errors. Every non-GET request carries the `X-Rock-Collection` header (see `AppHeaderFilter`).
 - Types and enum display labels live in `specimens/types.ts`.
 - **MUI 9 removed system props** (`<Stack gap={2}>`, `<Box display="flex">`). Put style values in `sx` instead.
 - Playwright tests select elements by role and accessible name. Keep these names stable, or update `test/*.spec.ts` along with them:
@@ -214,6 +217,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
   - the detail sections, which are regions named after their titles (including "Photos")
   - the photo controls: "Photos of {name}" (table photo), the dialog "{name} photos", "Previous photo" / "Next photo", "Photo n" (dots, `aria-current` on the shown one), "Close gallery", "Open photo n", "Make photo n the cover", "Delete photo n", the dialog "Delete this photo?", "Choose photos" and the file inputs labelled "Photo files"
 - `test/photos.spec.ts` and `test/publish.spec.ts` **mock every photo and publish endpoint (and image URL) with `page.route`**, because a real upload or publish commits to the public Pages repo (and saving publish settings would overwrite the owner's). Keep it that way; test real uploads by hand and delete the test specimen afterwards, which removes its files.
+- The specs import `test` / `expect` from `test/fixtures.ts`, whose `request` fixture adds the `X-Rock-Collection` header to the tests' **direct** API calls only; pages must send it themselves, so a page that forgets it still fails.
 
 ## Commands
 
@@ -253,6 +257,7 @@ The Playwright tests use `FRONTEND_URL` (default `http://localhost:3000`) and `A
 - **`ddl-auto=validate`**: the app refuses to start if the entities and the schema disagree. A new column needs both a migration and the entity field.
 - **The naming strategy doesn't split a trailing single capital.** `weightG` maps to `weightg`, not `weight_g`. Give such fields an explicit `@Column(name = ...)`.
 - **`next.config.ts` lists `@material/material-color-utilities` in `transpilePackages`.** Version 0.4.0 has an ESM import without a file extension that Node can't resolve during SSR, which made `next build` fail inside Docker. Remove the workaround once upstream fixes it.
+- **The API image is tuned for the 1 GB / quarter-CPU GCP VM** (`JAVA_TOOL_OPTIONS` and `MALLOC_ARENA_MAX` in `rock-collection-backend/Dockerfile`; Tomcat threads, Hikari pool and compression in `application.properties`). Measured under those limits: ~210 MB idle, levelling off at ~560 MB under repeated large uploads, ~25 s startup. Keep `-Djdk.nio.maxCachedBufferSize`: without it the JDK keeps a per-thread off-heap buffer as large as the biggest upload read, and memory grew without end.
 - **Check the exit code of `docker compose build`.** A failed image build leaves the old container running, so tests silently run against stale code.
 - **MUI `Dialog` only forwards `aria-labelledby` to the paper** (the element with `role="dialog"`). An `aria-label` on `<Dialog>` lands on the backdrop root, so pass it through `slotProps.paper` (as `PhotoGallery` does).
 - **While a dialog is open (or fading out), the rest of the page is `aria-hidden`.** Role queries outside it find nothing, so wait for the dialog to be gone, or use CSS locators.

@@ -1,4 +1,5 @@
-import { test, expect, APIRequestContext } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 // Full add/edit form and the detail view. Needs the full stack running.
 const API = process.env.API_BASE_URL || 'http://localhost:8080/api';

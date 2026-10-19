@@ -11,11 +11,18 @@ export class ApiError extends Error {
   }
 }
 
+/** The API refuses changes without it, so other web sites can't make them through this browser. */
+const APP_HEADER = { 'X-Rock-Collection': '1' };
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const changes = init?.method !== undefined && init.method !== 'GET';
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
-    // JSON bodies are strings; FormData sets its own multipart Content-Type
-    headers: typeof init?.body === 'string' ? { 'Content-Type': 'application/json', ...init.headers } : init?.headers,
+    headers: {
+      ...(changes ? APP_HEADER : {}),
+      // JSON bodies are strings; FormData sets its own multipart Content-Type
+      ...(typeof init?.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
+    },
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

@@ -12,6 +12,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.zip.CRC32;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -68,6 +69,21 @@ class ImageProcessorTest {
     }
 
     @Test
+    void webPhoto_muchLargerImage_isReadSubsampledAndStillFitsExactly() throws IOException {
+        // 6400 px is 4× the web size, so it's read at every 2nd pixel (3200 × 400) and then resized smoothly
+        ImageProcessor.Image result = processor.toWebPhoto(encode(image(6400, 800, BufferedImage.TYPE_INT_RGB), "jpg"));
+        assertThat(result.width()).isEqualTo(1600);
+        assertThat(result.height()).isEqualTo(200);
+    }
+
+    @Test
+    void webPhoto_absurdlyLargeImage_isRefusedBeforeDecoding() {
+        // Only the PNG header: 20000 × 20000 pixels would take 1.6 GB once decoded
+        assertThatThrownBy(() -> processor.toWebPhoto(pngHeader(20_000, 20_000)))
+                .isInstanceOf(BadRequestException.class).hasMessageContaining("too large").hasMessageContaining("20000 × 20000");
+    }
+
+    @Test
     void thumbnail_isSmallCenteredSquare() throws IOException {
         BufferedImage thumbnail = decode(processor.toThumbnail(encode(image(1600, 900, BufferedImage.TYPE_INT_RGB), "jpg")));
 
@@ -92,6 +108,19 @@ class ImageProcessorTest {
 
     private static BufferedImage decode(byte[] bytes) throws IOException {
         return ImageIO.read(new ByteArrayInputStream(bytes));
+    }
+
+    /** A PNG signature and IHDR chunk declaring the given size, with no pixel data. */
+    private static byte[] pngHeader(int width, int height) {
+        ByteBuffer ihdr = ByteBuffer.allocate(17);
+        ihdr.put("IHDR".getBytes(StandardCharsets.US_ASCII)).putInt(width).putInt(height)
+                .put((byte) 8).put((byte) 0).put((byte) 0).put((byte) 0).put((byte) 0); // 8-bit grey
+        CRC32 crc = new CRC32();
+        crc.update(ihdr.array());
+        ByteBuffer png = ByteBuffer.allocate(8 + 4 + 17 + 4);
+        png.put(new byte[]{(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'})
+                .putInt(13).put(ihdr.array()).putInt((int) crc.getValue());
+        return png.array();
     }
 
     private static boolean contains(byte[] haystack, String needle) {

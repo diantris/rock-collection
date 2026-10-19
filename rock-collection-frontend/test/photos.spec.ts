@@ -1,4 +1,5 @@
-import { test, expect, Page, APIRequestContext } from '@playwright/test';
+import { Page, APIRequestContext } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 // Photo endpoints and the photo files are mocked with page.route: a real upload would push to the public Pages repo.
 const API = process.env.API_BASE_URL ?? 'http://localhost:8080/api';

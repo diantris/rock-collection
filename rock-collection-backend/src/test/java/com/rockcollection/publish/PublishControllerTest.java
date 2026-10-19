@@ -26,7 +26,7 @@ class PublishControllerTest {
 
     @Test
     void updateSettings_acceptsFieldNames() throws Exception {
-        mvc.perform(put("/api/publish/settings").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(put("/api/publish/settings").header("X-Rock-Collection", "1").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"fields\": [\"HARDNESS\", \"STREAK\"], \"intro\": \"Hi\"}"))
                 .andExpect(status().isOk());
 
@@ -35,9 +35,9 @@ class PublishControllerTest {
 
     @Test
     void updateSettings_unknownFieldOrMissingList_is400() throws Exception {
-        mvc.perform(put("/api/publish/settings").contentType(MediaType.APPLICATION_JSON).content("{\"fields\": [\"PRIVATE_NOTES\"]}"))
+        mvc.perform(put("/api/publish/settings").header("X-Rock-Collection", "1").contentType(MediaType.APPLICATION_JSON).content("{\"fields\": [\"PRIVATE_NOTES\"]}"))
                 .andExpect(status().isBadRequest());
-        mvc.perform(put("/api/publish/settings").contentType(MediaType.APPLICATION_JSON).content("{\"intro\": \"Hi\"}"))
+        mvc.perform(put("/api/publish/settings").header("X-Rock-Collection", "1").contentType(MediaType.APPLICATION_JSON).content("{\"intro\": \"Hi\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fields").value("fields is required"));
     }
@@ -46,7 +46,7 @@ class PublishControllerTest {
     void publish_returnsTheResult() throws Exception {
         when(publishService.publish()).thenReturn(new PublishDto.Result(true, 3, "https://owner.github.io/pages/", Instant.EPOCH));
 
-        mvc.perform(post("/api/publish"))
+        mvc.perform(post("/api/publish").header("X-Rock-Collection", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.changed").value(true))
                 .andExpect(jsonPath("$.specimenCount").value(3));

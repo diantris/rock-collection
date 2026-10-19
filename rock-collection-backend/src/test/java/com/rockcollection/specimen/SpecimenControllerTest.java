@@ -41,15 +41,28 @@ class SpecimenControllerTest {
 
     @Test
     void create_withOnlyName_isAccepted() throws Exception {
-        mockMvc.perform(post("/api/specimens").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/specimens").header("X-Rock-Collection", "1").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Piasek Pustyni\"}"))
                 .andExpect(status().isCreated());
         verify(specimenService).create(any());
     }
 
     @Test
+    void changes_withoutTheAppHeader_areRefused() throws Exception {
+        // What a form on another web site could send through the owner's browser
+        mockMvc.perform(post("/api/specimens").contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"x\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("X-Rock-Collection")));
+        mockMvc.perform(delete("/api/specimens/1")).andExpect(status().isForbidden());
+        verifyNoInteractions(specimenService);
+        // Reading needs no header
+        when(specimenService.findPage(anyInt(), anyInt(), any(), any())).thenReturn(new PageResponse<>(List.of(), 0, 25, 0, 0));
+        mockMvc.perform(get("/api/specimens")).andExpect(status().isOk());
+    }
+
+    @Test
     void create_withoutName_returnsFieldErrors() throws Exception {
-        mockMvc.perform(post("/api/specimens").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/specimens").header("X-Rock-Collection", "1").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\" \",\"acquiredMonth\":13}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.name").value("name is required"))
@@ -59,7 +72,7 @@ class SpecimenControllerTest {
 
     @Test
     void create_withUnknownEnumValue_returnsBadRequest() throws Exception {
-        mockMvc.perform(post("/api/specimens").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/specimens").header("X-Rock-Collection", "1").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"X\",\"form\":\"PEBBLE\"}"))
                 .andExpect(status().isBadRequest());
     }

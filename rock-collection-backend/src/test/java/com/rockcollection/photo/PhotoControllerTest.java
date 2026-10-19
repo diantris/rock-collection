@@ -30,7 +30,7 @@ class PhotoControllerTest {
         when(photoService.upload(eq(7L), anyList())).thenReturn(List.of(
                 new PhotoDto(1L, "photos/7/7-abc.jpg", "https://raw.test/photos/7/7-abc.jpg", "https://raw.test/photos/7/7-abc-small.jpg", null, 0, 1600, 1200)));
 
-        mvc.perform(multipart("/api/specimens/7/photos")
+        mvc.perform(multipart("/api/specimens/7/photos").header("X-Rock-Collection", "1")
                         .file(new MockMultipartFile("files", "a.jpg", "image/jpeg", new byte[]{1}))
                         .file(new MockMultipartFile("files", "b.jpg", "image/jpeg", new byte[]{2})))
                 .andExpect(status().isCreated())
@@ -42,7 +42,7 @@ class PhotoControllerTest {
     void upload_withoutGitHub_is503WithMessage() throws Exception {
         when(photoService.upload(eq(7L), anyList())).thenThrow(new GitHubException("GITHUB_TOKEN is missing"));
 
-        mvc.perform(multipart("/api/specimens/7/photos").file(new MockMultipartFile("files", "a.jpg", "image/jpeg", new byte[]{1})))
+        mvc.perform(multipart("/api/specimens/7/photos").header("X-Rock-Collection", "1").file(new MockMultipartFile("files", "a.jpg", "image/jpeg", new byte[]{1})))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.error").value("GITHUB_TOKEN is missing"));
     }
