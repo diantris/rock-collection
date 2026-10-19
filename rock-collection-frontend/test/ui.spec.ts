@@ -37,4 +37,5 @@ test('Adding a specimen with only a name shows it in the table', async ({ page }
   await row.getByRole('button', { name: `Delete ${name}` }).click();
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(row).toHaveCount(0);
+  await expect(page.getByText(`“${name}” was deleted. Publish again to remove it from the public site.`)).toBeVisible();
 });

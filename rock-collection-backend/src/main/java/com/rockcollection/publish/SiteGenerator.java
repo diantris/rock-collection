@@ -156,7 +156,7 @@ public class SiteGenerator {
                         row(on.apply(PublishField.LUSTER), "Luster", s.getLuster()),
                         row(on.apply(PublishField.TRANSPARENCY), "Transparency", s.getTransparency()),
                         row(on.apply(PublishField.OPTICAL_EFFECTS), "Optical effects",
-                                labels(s.getOpticalEffects(), OpticalEffect::valueOf, SiteLabels.OPTICAL_EFFECT)))),
+                                labels(s.opticalEffectValues(), SiteLabels.OPTICAL_EFFECT)))),
                 section("Physical properties", Arrays.asList(
                         row(on.apply(PublishField.HARDNESS), "Hardness (Mohs)", hardness(s.getHardnessMin(), s.getHardnessMax())),
                         row(on.apply(PublishField.STREAK), "Streak", s.getStreak()),
@@ -165,7 +165,7 @@ public class SiteGenerator {
                         row(on.apply(PublishField.FRACTURE), "Fracture", s.getFracture()),
                         row(on.apply(PublishField.CRYSTAL_HABIT), "Crystal habit", s.getCrystalHabit()),
                         row(on.apply(PublishField.SPECIAL_PROPERTIES), "Special properties",
-                                labels(s.getSpecialProperties(), SpecialProperty::valueOf, SiteLabels.SPECIAL_PROPERTY)),
+                                labels(s.specialPropertyValues(), SiteLabels.SPECIAL_PROPERTY)),
                         row(on.apply(PublishField.OTHER_OBSERVATIONS), "Other observations", s.getOtherObservations()))),
                 section("Size & weight", Arrays.asList(
                         row(on.apply(PublishField.WEIGHT), "Weight", s.getWeightG() == null ? null : number(s.getWeightG()) + " g"),
@@ -223,8 +223,8 @@ public class SiteGenerator {
         return value == null ? null : labels.get(value);
     }
 
-    private static <E extends Enum<E>> String labels(List<String> names, Function<String, E> parse, Map<E, String> labels) {
-        return names.isEmpty() ? null : names.stream().map(n -> labels.get(parse.apply(n))).collect(Collectors.joining(", "));
+    private static <E extends Enum<E>> String labels(Set<E> values, Map<E, String> labels) {
+        return values.isEmpty() ? null : values.stream().map(labels::get).collect(Collectors.joining(", "));
     }
 
     /** "2.65", not "2.650". */

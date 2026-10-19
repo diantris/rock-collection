@@ -12,8 +12,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public final class SpecimenDto {
     private SpecimenDto() {}
@@ -81,8 +79,7 @@ public final class SpecimenDto {
                     s.getColor(), s.getSecondaryColor(), s.getLuster(), s.getTransparency(), s.getStreak(),
                     s.getHardnessMin(), s.getHardnessMax(), s.getCleavage(), s.getFracture(), s.getCrystalHabit(),
                     s.getSpecificGravity(),
-                    toEnumSet(s.getSpecialProperties(), SpecialProperty::valueOf),
-                    toEnumSet(s.getOpticalEffects(), OpticalEffect::valueOf),
+                    s.specialPropertyValues(), s.opticalEffectValues(),
                     s.getInclusions(), s.getWeightG(), s.getLengthMm(), s.getWidthMm(), s.getHeightMm(),
                     s.getOtherObservations(),
                     s.getLocality(), s.getCountry(),
@@ -90,10 +87,6 @@ public final class SpecimenDto {
                     s.getAcquiredYear(), s.getAcquiredMonth(), s.getAcquiredDay(), s.getPrice(), s.getCurrency(),
                     List.copyOf(s.getTags()), s.getDescription(), s.getPrivateNotes(),
                     s.isPublished(), s.getCreatedAt(), s.getUpdatedAt());
-        }
-
-        private static <E extends Enum<E>> Set<E> toEnumSet(List<String> names, Function<String, E> parse) {
-            return names.stream().map(parse).collect(Collectors.toCollection(java.util.LinkedHashSet::new));
         }
     }
 

@@ -157,6 +157,20 @@ class SpecimenServiceTest {
     }
 
     @Test
+    void findById_storedNameNoLongerInTheEnum_isSkippedInsteadOfFailing() {
+        Specimen s = new Specimen();
+        s.setName("Labradorite");
+        s.setOpticalEffects(List.of("LABRADORESCENCE", "SOME_RENAMED_EFFECT"));
+        s.setSpecialProperties(List.of("GONE"));
+        when(specimenRepository.findById(3L)).thenReturn(Optional.of(s));
+
+        SpecimenDto.Detail detail = service.findById(3L);
+
+        assertThat(detail.opticalEffects()).containsExactly(OpticalEffect.LABRADORESCENCE);
+        assertThat(detail.specialProperties()).isEmpty();
+    }
+
+    @Test
     void findById_missing_throwsNotFound() {
         when(specimenRepository.findById(42L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.findById(42L)).isInstanceOf(NotFoundException.class);

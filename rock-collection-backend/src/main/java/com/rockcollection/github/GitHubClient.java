@@ -9,6 +9,7 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 
 import java.net.http.HttpClient;
@@ -16,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -33,6 +35,13 @@ public class GitHubClient {
     private static final Set<String> TEXT_EXTENSIONS = Set.of("html", "css", "js", "json", "txt", "md", "svg", "xml");
 
     static final int MAX_ATTEMPTS = 4;
+    /**
+     * GitHub allows about 80 content-creating requests a minute and 500 an hour (each photo needs 2, a commit 2-3).
+     * A short wait for the limit is sat out within the request; a longer one is reported, with how long it is.
+     */
+    static final Duration MAX_RATE_LIMIT_WAIT = Duration.ofSeconds(90);
+    /** GitHub's advice when a secondary rate limit says nothing about how long to wait. */
+    private static final Duration DEFAULT_RATE_LIMIT_WAIT = Duration.ofSeconds(60);
 
     private final GitHubProperties properties;
     private final RestClient rest;
@@ -102,24 +111,72 @@ public class GitHubClient {
     /**
      * Right after a commit, GitHub can still report the previous branch head for a moment; a commit built on it
      * is then refused as "not a fast forward". In that case the whole commit is rebuilt on the new head and retried.
+     * When GitHub's rate limit is hit, a short wait is sat out and the commit continues; blobs already uploaded
+     * are reused rather than uploaded (and counted) again.
      */
     private Optional<String> commit(String message, Map<String, byte[]> files, Function<Set<String>, List<String>> deletions) {
         requireConfigured();
-        for (int attempt = 1; ; attempt++) {
+        Map<String, String> uploaded = new HashMap<>(); // git blob sha of the content -> sha GitHub returned
+        int staleHeadAttempts = 0, rateLimitAttempts = 0;
+        while (true) {
             try {
-                return commitOnce(message, files, deletions);
+                return commitOnce(message, files, deletions, uploaded);
             } catch (GitHubException e) {
+                Optional<Duration> rateLimit = rateLimitWait(e);
+                if (rateLimit.isPresent()) {
+                    Duration wait = rateLimit.get();
+                    if (wait.compareTo(MAX_RATE_LIMIT_WAIT) > 0 || ++rateLimitAttempts >= MAX_ATTEMPTS) {
+                        throw new GitHubException(rateLimitMessage(wait), e);
+                    }
+                    log.warn("GitHub rate limit reached, waiting {} s before continuing", wait.toSeconds());
+                    sleep(wait);
+                    continue;
+                }
                 boolean staleHead = e.getCause() instanceof HttpClientErrorException http
                         && http.getStatusCode().value() == 422 && http.getResponseBodyAsString().contains("fast forward");
-                if (!staleHead || attempt == MAX_ATTEMPTS) throw e;
-                log.info("Branch moved while committing to {}, retrying ({}/{})", properties.repo(), attempt, MAX_ATTEMPTS);
-                sleep(retryDelay.multipliedBy(attempt));
+                if (!staleHead || ++staleHeadAttempts >= MAX_ATTEMPTS) throw e;
+                log.info("Branch moved while committing to {}, retrying ({}/{})", properties.repo(), staleHeadAttempts, MAX_ATTEMPTS);
+                sleep(retryDelay.multipliedBy(staleHeadAttempts));
             }
         }
     }
 
-    /** @param deletions picks the paths to delete from the paths currently in the repo */
-    private Optional<String> commitOnce(String message, Map<String, byte[]> files, Function<Set<String>, List<String>> deletions) {
+    /**
+     * How long GitHub asks to wait, if the error is a rate limit: a 403 or 429 with {@code Retry-After}, with
+     * {@code x-ratelimit-remaining: 0} (then until {@code x-ratelimit-reset}), or saying "rate limit".
+     */
+    static Optional<Duration> rateLimitWait(GitHubException e) {
+        if (!(e.getCause() instanceof HttpStatusCodeException http)) return Optional.empty();
+        int status = http.getStatusCode().value();
+        if (status != 403 && status != 429) return Optional.empty();
+        HttpHeaders headers = http.getResponseHeaders() != null ? http.getResponseHeaders() : new HttpHeaders();
+        String retryAfter = headers.getFirst("Retry-After");
+        if (retryAfter != null && retryAfter.strip().matches("\\d+")) {
+            return Optional.of(Duration.ofSeconds(Long.parseLong(retryAfter.strip())));
+        }
+        String reset = headers.getFirst("x-ratelimit-reset");
+        if ("0".equals(headers.getFirst("x-ratelimit-remaining")) && reset != null && reset.matches("\\d+")) {
+            long seconds = Long.parseLong(reset) - Instant.now().getEpochSecond();
+            return Optional.of(Duration.ofSeconds(Math.max(seconds, 1)));
+        }
+        if (status == 429 || http.getResponseBodyAsString().toLowerCase(Locale.ROOT).contains("rate limit")) {
+            return Optional.of(DEFAULT_RATE_LIMIT_WAIT);
+        }
+        return Optional.empty(); // a plain 403: e.g. the token lacks permission
+    }
+
+    private static String rateLimitMessage(Duration wait) {
+        long minutes = Math.max(1, (wait.toSeconds() + 59) / 60);
+        return "GitHub's limit for saving files has been reached (about 500 an hour; each photo needs 2). "
+                + "Please try again in about " + minutes + (minutes == 1 ? " minute." : " minutes.");
+    }
+
+    /**
+     * @param deletions picks the paths to delete from the paths currently in the repo
+     * @param uploaded  blobs uploaded by earlier attempts of the same commit, reused instead of uploading them again
+     */
+    private Optional<String> commitOnce(String message, Map<String, byte[]> files, Function<Set<String>, List<String>> deletions,
+                                        Map<String, String> uploaded) {
         try {
             String ref = repoPath("/git/refs/heads/" + properties.branch());
             String parent = rest.get().uri(ref).retrieve().body(RefResponse.class).object().sha();
@@ -128,10 +185,11 @@ public class GitHubClient {
 
             List<Map<String, Object>> entries = new ArrayList<>();
             for (var file : files.entrySet()) {
-                if (gitBlobSha(file.getValue()).equals(existing.get(file.getKey()))) continue; // unchanged
+                String sha = gitBlobSha(file.getValue());
+                if (sha.equals(existing.get(file.getKey()))) continue; // unchanged
                 entries.add(isText(file.getKey())
                         ? treeEntry(file.getKey(), "content", new String(file.getValue(), StandardCharsets.UTF_8))
-                        : treeEntry(file.getKey(), "sha", createBlob(file.getValue())));
+                        : treeEntry(file.getKey(), "sha", uploaded.computeIfAbsent(sha, k -> createBlob(file.getValue()))));
             }
             List<String> deleted = deletions.apply(existing.keySet());
             for (String path : deleted) entries.add(treeEntry(path, "sha", null)); // a null sha removes the file

@@ -102,6 +102,17 @@ class SiteGeneratorTest {
     }
 
     @Test
+    void storedNameNoLongerInTheEnum_doesNotBreakPublishing() {
+        Specimen s = fullSpecimen();
+        s.setOpticalEffects(List.of("SOME_RENAMED_EFFECT", "IRIDESCENCE"));
+        s.setSpecialProperties(List.of("GONE"));
+
+        String page = generate(DEFAULTS, List.of(s), Map.of()).get("specimens/7/index.html");
+
+        assertThat(page).contains("Iridescence").doesNotContain("SOME_RENAMED_EFFECT", "Special properties");
+    }
+
+    @Test
     void userText_isHtmlEscaped() {
         Specimen s = specimen(1, "<script>alert('x')</script> & co");
         String page = generate(DEFAULTS, List.of(s), Map.of()).get("specimens/1/index.html");

@@ -125,6 +125,7 @@ test('Details: upload photos, make one the cover and delete one', async ({ page 
   await page.getByRole('dialog', { name: 'Delete this photo?' }).getByRole('button', { name: 'Delete' }).click();
   await expect(section.getByRole('button', { name: /^Open photo/ })).toHaveCount(1);
   expect(photos.map(p => p.id)).toEqual([2]);
+  await expect(section.getByText(/publish again to update it/)).toBeVisible();
 });
 
 test('Add form uploads the chosen photos once the specimen is saved', async ({ page, request }) => {

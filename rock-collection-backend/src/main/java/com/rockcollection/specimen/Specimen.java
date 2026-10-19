@@ -11,7 +11,9 @@ import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A specimen's id doubles as its public, stable number ("#142").
@@ -155,6 +157,20 @@ public class Specimen {
     public void setSpecialProperties(List<String> specialProperties) { this.specialProperties = specialProperties; }
     public List<String> getOpticalEffects() { return opticalEffects; }
     public void setOpticalEffects(List<String> opticalEffects) { this.opticalEffects = opticalEffects; }
+
+    /** The stored special properties as enum values; a name the enum no longer has (e.g. after a rename) is skipped. */
+    public Set<SpecialProperty> specialPropertyValues() { return known(specialProperties, SpecialProperty.class); }
+
+    /** The stored optical effects as enum values; a name the enum no longer has is skipped. */
+    public Set<OpticalEffect> opticalEffectValues() { return known(opticalEffects, OpticalEffect.class); }
+
+    private static <E extends Enum<E>> Set<E> known(List<String> names, Class<E> type) {
+        Set<E> values = new LinkedHashSet<>();
+        for (String name : names) {
+            for (E value : type.getEnumConstants()) if (value.name().equals(name)) values.add(value);
+        }
+        return values;
+    }
     public String getInclusions() { return inclusions; }
     public void setInclusions(String inclusions) { this.inclusions = inclusions; }
     public BigDecimal getWeightG() { return weightG; }

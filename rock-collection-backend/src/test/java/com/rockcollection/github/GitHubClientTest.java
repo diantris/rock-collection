@@ -136,6 +136,54 @@ class GitHubClientTest {
     }
 
     @Test
+    void commit_shortRateLimit_isWaitedOutAndBlobsAlreadyUploadedAreNotSentAgain() {
+        Map<String, byte[]> photos = new LinkedHashMap<>();
+        photos.put("photos/1/a.jpg", utf8("first"));
+        photos.put("photos/1/b.jpg", utf8("second"));
+        // First attempt: the second blob hits GitHub's secondary rate limit
+        expectCurrentFiles("[]");
+        server.expect(requestTo(REPO + "/git/blobs")).andExpect(jsonPath("$.content").value(Base64.getEncoder().encodeToString(utf8("first"))))
+                .andRespond(withSuccess("{\"sha\":\"blob-a\"}", APPLICATION_JSON));
+        server.expect(requestTo(REPO + "/git/blobs")).andExpect(jsonPath("$.content").value(Base64.getEncoder().encodeToString(utf8("second"))))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN).header("Retry-After", "0").contentType(APPLICATION_JSON)
+                        .body("{\"message\": \"You have exceeded a secondary rate limit.\"}"));
+        // Second attempt: only the missing blob is uploaded
+        expectCurrentFiles("[]");
+        server.expect(requestTo(REPO + "/git/blobs")).andExpect(jsonPath("$.content").value(Base64.getEncoder().encodeToString(utf8("second"))))
+                .andRespond(withSuccess("{\"sha\":\"blob-b\"}", APPLICATION_JSON));
+        server.expect(requestTo(REPO + "/git/trees")).andExpect(content().json("""
+                        {"base_tree": "base-tree", "tree": [
+                          {"path": "photos/1/a.jpg", "sha": "blob-a"}, {"path": "photos/1/b.jpg", "sha": "blob-b"}]}"""))
+                .andRespond(withSuccess("{\"sha\":\"tree\"}", APPLICATION_JSON));
+        expectCommitAndRefUpdate("Add photos");
+
+        assertThat(client.commit("Add photos", photos, List.of())).contains("new-commit");
+        server.verify();
+    }
+
+    @Test
+    void commit_longRateLimit_saysHowLongToWait() {
+        expectCurrentFiles("[]");
+        server.expect(requestTo(REPO + "/git/blobs"))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN).header("x-ratelimit-remaining", "0")
+                        .header("x-ratelimit-reset", String.valueOf(java.time.Instant.now().getEpochSecond() + 1800)));
+
+        assertThatThrownBy(() -> client.commit("Add a photo", Map.of("photos/1/a.jpg", utf8("x")), List.of()))
+                .isInstanceOf(GitHubException.class).hasMessageContaining("limit").hasMessageContaining("30 minutes");
+        server.verify(); // no retry
+    }
+
+    @Test
+    void commit_forbiddenForAnotherReason_isNotTreatedAsARateLimit() {
+        server.expect(requestTo(REPO + "/git/refs/heads/main")).andRespond(withStatus(HttpStatus.FORBIDDEN)
+                .contentType(APPLICATION_JSON).body("{\"message\": \"Resource not accessible by personal access token\"}"));
+
+        assertThatThrownBy(() -> client.commit("x", Map.of(), List.of("a.jpg")))
+                .isInstanceOf(GitHubException.class).hasMessageContaining("not accessible");
+        server.verify();
+    }
+
+    @Test
     void commit_gitHubError_isReportedAsGitHubException() {
         server.expect(requestTo(REPO + "/git/refs/heads/main")).andRespond(withServerError());
 

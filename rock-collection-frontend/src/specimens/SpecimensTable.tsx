@@ -42,7 +42,7 @@ const SpecimensTable: React.FC = () => {
   const [detailRefresh, setDetailRefresh] = useState(0);
   const [addMaterialOpen, setAddMaterialOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
-  const [toDelete, setToDelete] = useState<{ id: number; name: string } | null>(null);
+  const [toDelete, setToDelete] = useState<{ id: number; name: string; published: boolean } | null>(null);
   // Gallery opened straight from a table photo
   const [gallery, setGallery] = useState<{ name: string; photos: Photo[] } | null>(null);
 
@@ -207,6 +207,8 @@ const SpecimensTable: React.FC = () => {
         onClose={() => setToDelete(null)}
         onConfirm={async () => {
           await deleteSpecimen(toDelete!.id);
+          // Its page and photos stay on the public site (photos broken) until the next publish
+          if (toDelete!.published) setNotice(`“${toDelete!.name}” was deleted. Publish again to remove it from the public site.`);
           setToDelete(null);
           setDetailId(null);
           load();

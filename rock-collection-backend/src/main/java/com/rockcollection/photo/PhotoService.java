@@ -22,7 +22,6 @@ import java.util.stream.Collectors;
  * is published. The cover photo (position 0) is the one the table thumbnail is made from.
  */
 @Service
-@Transactional
 public class PhotoService {
 
     private static final Logger log = LoggerFactory.getLogger(PhotoService.class);
@@ -55,6 +54,11 @@ public class PhotoService {
      * Resizes the photos, strips their metadata and commits them all to the Pages repo in one commit,
      * each with a small copy for the public site's index.
      * The first photo of a specimen that had none also becomes its thumbnail.
+     * <p>
+     * Deliberately not {@code @Transactional} (the class isn't either): processing (one photo at a time, other
+     * uploads wait) and the GitHub commit can take a while, and a transaction, or even Spring's non-transactional
+     * session scope, would hold a database connection all along, so a few queued uploads could leave none for the
+     * rest of the app. Each repository call below borrows a connection only for its own short transaction.
      */
     public List<PhotoDto> upload(Long specimenId, List<MultipartFile> files) {
         requireSpecimen(specimenId);
@@ -86,6 +90,7 @@ public class PhotoService {
      * Puts the photos in the given order; the first becomes the cover.
      * @param photoIds every photo id of the specimen, each exactly once
      */
+    @Transactional
     public List<PhotoDto> reorder(Long specimenId, List<Long> photoIds) {
         requireSpecimen(specimenId);
         List<SpecimenPhoto> photos = photos(specimenId);
@@ -101,6 +106,7 @@ public class PhotoService {
     }
 
     /** Removes the photo from the Pages repo and the gallery; deleting the cover makes the next photo the cover. */
+    @Transactional
     public void delete(Long specimenId, Long photoId) {
         requireSpecimen(specimenId);
         List<SpecimenPhoto> photos = new ArrayList<>(photos(specimenId));
@@ -119,6 +125,7 @@ public class PhotoService {
      * Removes all of a specimen's photo files from the Pages repo, before the specimen itself is deleted
      * (its photo and thumbnail rows go with it). Best effort: if GitHub can't be reached the files stay behind.
      */
+    @Transactional
     public void deleteAllFiles(Long specimenId) {
         List<String> paths = photos(specimenId).stream().flatMap(p -> p.getAllFileNames().stream()).toList();
         if (paths.isEmpty()) return;

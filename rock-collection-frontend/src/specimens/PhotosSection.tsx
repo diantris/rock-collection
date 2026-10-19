@@ -26,6 +26,8 @@ const PhotosSection: React.FC<Props> = ({ specimenId, specimenName, onChanged })
   const [photos, setPhotos] = useState<Photo[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null); // what's happening, shown under the progress bar
   const [error, setError] = useState<string | null>(null);
+  // Reminder after a deletion: the public site keeps showing the photo (broken) until the next publish
+  const [notice, setNotice] = useState<string | null>(null);
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
   const [toDelete, setToDelete] = useState<Photo | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -36,15 +38,18 @@ const PhotosSection: React.FC<Props> = ({ specimenId, specimenName, onChanged })
     fetchPhotos(specimenId).then(setPhotos).catch(e => setError((e as Error).message));
   }, [specimenId]);
 
-  /** Runs a change, then shows the resulting photos (or the error). */
+  /** Runs a change, then shows the resulting photos (or the error); true if it worked. */
   const change = useCallback(async (label: string, action: () => Promise<Photo[]>) => {
     setBusy(label);
     setError(null);
+    setNotice(null);
     try {
       setPhotos(await action());
       onChanged();
+      return true;
     } catch (e) {
       setError((e as Error).message);
+      return false;
     } finally {
       setBusy(null);
     }
@@ -66,6 +71,8 @@ const PhotosSection: React.FC<Props> = ({ specimenId, specimenName, onChanged })
     void change('Deleting photo…', async () => {
       await deletePhoto(specimenId, photo.id);
       return fetchPhotos(specimenId);
+    }).then(deleted => {
+      if (deleted) setNotice('Photo deleted. If this specimen is on the public site, publish again to update it.');
     });
   };
 
@@ -90,6 +97,7 @@ const PhotosSection: React.FC<Props> = ({ specimenId, specimenName, onChanged })
 
       {busy && <Box sx={{ mb: 1 }}><LinearProgress /><Typography variant="caption" sx={{ color: 'text.secondary' }}>{busy}</Typography></Box>}
       {error && <Alert severity="error" sx={{ mb: 1 }} onClose={() => setError(null)}>{error}</Alert>}
+      {notice && <Alert severity="info" sx={{ mb: 1 }} onClose={() => setNotice(null)}>{notice}</Alert>}
 
       {photos?.length === 0 && (
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
