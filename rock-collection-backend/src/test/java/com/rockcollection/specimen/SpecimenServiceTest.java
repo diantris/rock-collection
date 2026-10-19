@@ -7,6 +7,7 @@ import com.rockcollection.material.Material;
 import com.rockcollection.material.MaterialCategory;
 import com.rockcollection.material.MaterialFamily;
 import com.rockcollection.material.MaterialService;
+import com.rockcollection.photo.PhotoService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,12 +37,14 @@ class SpecimenServiceTest {
     private SpecimenRepository specimenRepository;
     @Mock
     private MaterialService materialService;
+    @Mock
+    private PhotoService photoService;
 
     private SpecimenService service;
 
     @BeforeEach
     void setUp() {
-        service = new SpecimenService(specimenRepository, materialService);
+        service = new SpecimenService(specimenRepository, materialService, photoService);
     }
 
     /** Builds a request from JSON so tests only mention the fields they care about. */
@@ -148,9 +151,9 @@ class SpecimenServiceTest {
         Specimen unidentified = new Specimen();
         unidentified.setName("Piasek Pustyni");
 
-        assertThat(SpecimenDto.Summary.from(s)).extracting(SpecimenDto.Summary::type, SpecimenDto.Summary::family)
+        assertThat(SpecimenDto.Summary.from(s, null)).extracting(SpecimenDto.Summary::type, SpecimenDto.Summary::family)
                 .containsExactly(MaterialCategory.ROCK, MaterialFamily.IGNEOUS);
-        assertThat(SpecimenDto.Summary.from(unidentified).type()).isNull();
+        assertThat(SpecimenDto.Summary.from(unidentified, null).type()).isNull();
     }
 
     @Test

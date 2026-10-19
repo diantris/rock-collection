@@ -4,6 +4,7 @@ import com.rockcollection.common.ConflictException;
 import com.rockcollection.common.PageResponse;
 import com.rockcollection.material.MaterialDto;
 import com.rockcollection.material.MaterialService;
+import com.rockcollection.photo.*;
 import com.rockcollection.specimen.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,12 @@ class DatabaseIntegrationTest {
     private SpecimenService specimenService;
     @Autowired
     private MaterialService materialService;
+    @Autowired
+    private PhotoService photoService;
+    @Autowired
+    private SpecimenPhotoRepository photoRepository;
+    @Autowired
+    private SpecimenThumbnailRepository thumbnailRepository;
 
     private Long materialId(String name) {
         return materialService.findAll().stream().filter(m -> m.name().equals(name)).findFirst().orElseThrow().id();
@@ -100,5 +107,31 @@ class DatabaseIntegrationTest {
         assertThat(created.components()).isEmpty();
         assertThat(created.tags()).isEqualTo(List.of());
         assertThat(created.specialProperties()).isEmpty();
+    }
+
+    @Test
+    void photosAndThumbnailAreStoredAndGoAwayWithTheSpecimen() {
+        Long id = specimenService.create(
+                JsonMapper.builder().build().readValue("{\"name\": \"Photographed\"}", SpecimenDto.Request.class)).id();
+        // Saved directly: uploading goes through GitHub, which this test doesn't talk to
+        photoRepository.save(new SpecimenPhoto(id, "photos/%d/%d-0000000a.jpg".formatted(id, id), 0, 1600, 1200));
+        SpecimenThumbnail thumbnail = new SpecimenThumbnail(id);
+        thumbnail.replace("image/jpeg", new byte[]{(byte) 0xFF, (byte) 0xD8, 42});
+        thumbnailRepository.save(thumbnail);
+
+        assertThat(photoService.list(id)).singleElement().satisfies(p -> {
+            assertThat(p.fileName()).endsWith("-0000000a.jpg");
+            assertThat(p.url()).startsWith("https://raw.githubusercontent.com/");
+            assertThat(p.width()).isEqualTo(1600);
+        });
+        assertThat(photoService.thumbnail(id).getData()).containsExactly(0xFF, 0xD8, 42);
+        SpecimenDto.Summary summary = specimenService.findPage(0, 100, "id", Sort.Direction.ASC).content().stream()
+                .filter(s -> s.id().equals(id)).findFirst().orElseThrow();
+        assertThat(summary.thumbnailVersion()).isEqualTo(photoService.thumbnail(id).getUpdatedAt().toEpochMilli());
+
+        // No GitHub token here, so removing the files fails quietly; the rows still cascade away
+        specimenService.delete(id);
+        assertThat(photoRepository.findBySpecimenIdOrderByPositionAscIdAsc(id)).isEmpty();
+        assertThat(thumbnailRepository.findById(id)).isEmpty();
     }
 }

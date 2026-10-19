@@ -4,6 +4,7 @@ package com.rockcollection.controller;
 import com.rockcollection.common.BadRequestException;
 import com.rockcollection.common.ConflictException;
 import com.rockcollection.common.NotFoundException;
+import com.rockcollection.github.GitHubException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +13,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -54,6 +56,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, String>> handleIntegrity(DataIntegrityViolationException ex) {
         return error(HttpStatus.CONFLICT, "Request conflicts with existing data");
+    }
+
+    /** 503 when the GitHub Pages repo (where photos are kept) isn't configured or can't be reached. */
+    @ExceptionHandler(GitHubException.class)
+    public ResponseEntity<Map<String, String>> handleGitHub(GitHubException ex) {
+        return error(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, String>> handleTooLarge(MaxUploadSizeExceededException ex) {
+        return error(HttpStatus.CONTENT_TOO_LARGE, "Upload too large: at most 40 MB per photo and 400 MB at once");
     }
 
     private static ResponseEntity<Map<String, String>> error(HttpStatus status, String message) {

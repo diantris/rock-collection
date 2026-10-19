@@ -45,8 +45,9 @@ public final class SpecimenDto {
             MaterialCategory type, MaterialFamily family,
             SpecimenForm form, SpecimenNature nature, String country,
             AcquisitionType acquisitionType, String acquiredFrom, String acquiredCountry, Integer acquiredYear,
-            BigDecimal price, String currency, List<String> tags, boolean published) {
-        static Summary from(Specimen s) {
+            BigDecimal price, String currency, List<String> tags, boolean published, Long thumbnailVersion) {
+        /** @param thumbnailVersion changes whenever the thumbnail does; null when there's no photo */
+        static Summary from(Specimen s, Long thumbnailVersion) {
             SpecimenComponent primary = s.primaryComponent();
             return new Summary(s.getId(), s.getName(), s.getMarketName(),
                     s.getComponents().stream().map(Component::from).toList(),
@@ -54,7 +55,7 @@ public final class SpecimenDto {
                     primary != null ? primary.getMaterial().getFamily() : null,
                     s.getForm(), s.getNature(), s.getCountry(),
                     s.getAcquisitionType(), s.getAcquiredFrom(), s.getAcquiredCountry(), s.getAcquiredYear(),
-                    s.getPrice(), s.getCurrency(), List.copyOf(s.getTags()), s.isPublished());
+                    s.getPrice(), s.getCurrency(), List.copyOf(s.getTags()), s.isPublished(), thumbnailVersion);
         }
     }
 

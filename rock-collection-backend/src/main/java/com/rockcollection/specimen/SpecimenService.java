@@ -5,6 +5,8 @@ import com.rockcollection.common.BadRequestException;
 import com.rockcollection.common.NotFoundException;
 import com.rockcollection.common.PageResponse;
 import com.rockcollection.material.MaterialService;
+import com.rockcollection.photo.PhotoService;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -43,10 +45,12 @@ public class SpecimenService {
 
     private final SpecimenRepository specimenRepository;
     private final MaterialService materialService;
+    private final PhotoService photoService;
 
-    public SpecimenService(SpecimenRepository specimenRepository, MaterialService materialService) {
+    public SpecimenService(SpecimenRepository specimenRepository, MaterialService materialService, PhotoService photoService) {
         this.specimenRepository = specimenRepository;
         this.materialService = materialService;
+        this.photoService = photoService;
     }
 
     /**
@@ -59,7 +63,9 @@ public class SpecimenService {
         // Secondary sort on id keeps paging stable when many rows share a value (or are null)
         Sort sort = Sort.by(new Sort.Order(direction, property).nullsLast(), Sort.Order.asc("id"));
         PageRequest pageRequest = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, MAX_PAGE_SIZE), sort);
-        return PageResponse.from(specimenRepository.findAll(pageRequest), SpecimenDto.Summary::from);
+        Page<Specimen> result = specimenRepository.findAll(pageRequest);
+        Map<Long, Long> thumbnails = photoService.thumbnailVersions(result.getContent().stream().map(Specimen::getId).toList());
+        return PageResponse.from(result, s -> SpecimenDto.Summary.from(s, thumbnails.get(s.getId())));
     }
 
     @Transactional(readOnly = true)
@@ -85,8 +91,11 @@ public class SpecimenService {
         return SpecimenDto.Detail.from(specimenRepository.saveAndFlush(specimen));
     }
 
+    /** Also removes the specimen's photo files from the Pages repo. */
     public void delete(Long id) {
-        specimenRepository.delete(get(id));
+        Specimen specimen = get(id);
+        photoService.deleteAllFiles(id);
+        specimenRepository.delete(specimen);
     }
 
     private Specimen get(Long id) {
