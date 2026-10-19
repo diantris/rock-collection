@@ -265,7 +265,8 @@ public class GitHubClient {
         }
     }
 
-    private void requireConfigured() {
+    /** @throws GitHubException naming GITHUB_TOKEN when there's no token */
+    public void requireConfigured() {
         if (!isConfigured()) {
             throw new GitHubException("The GitHub Pages repo isn't set up: GITHUB_TOKEN is missing (see .env.example)");
         }

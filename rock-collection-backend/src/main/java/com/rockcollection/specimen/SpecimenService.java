@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -187,7 +188,7 @@ public class SpecimenService {
 
     private static <E extends Enum<E>> List<String> enumNames(Set<E> values) {
         if (values == null) return new ArrayList<>();
-        return values.stream().map(Enum::name).sorted().collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        return values.stream().map(Enum::name).sorted().collect(Collectors.toCollection(ArrayList::new));
     }
 
     private List<SpecimenComponent> toComponents(List<SpecimenDto.ComponentRequest> requests) {

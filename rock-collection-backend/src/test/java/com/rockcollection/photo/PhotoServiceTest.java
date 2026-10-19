@@ -95,7 +95,7 @@ class PhotoServiceTest {
 
     @Test
     void upload_withoutGitHubToken_failsBeforeProcessingAnything() {
-        when(gitHub.isConfigured()).thenReturn(false);
+        doThrow(new GitHubException("GITHUB_TOKEN is missing")).when(gitHub).requireConfigured();
 
         assertThatThrownBy(() -> service.upload(SPECIMEN, List.of(upload("a.jpg")))).isInstanceOf(GitHubException.class);
         verifyNoInteractions(imageProcessor);

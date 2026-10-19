@@ -148,7 +148,10 @@ const PublishDialog: React.FC<Props> = ({ open, onClose, onSpecimensChanged }) =
         {result && (
           <Alert severity={result.changed ? 'success' : 'info'} sx={{ mt: 2 }}>
             {result.changed
-              ? <>Published {result.specimenCount} specimen{result.specimenCount === 1 ? '' : 's'}. GitHub needs about a minute to update <Link href={result.siteUrl} target="_blank" rel="noopener">the site</Link>.</>
+              ? <>
+                  Published {result.specimenCount} specimen{result.specimenCount === 1 ? '' : 's'}. GitHub needs about a minute
+                  to update <Link href={result.siteUrl} target="_blank" rel="noopener">the site</Link>.
+                </>
               : 'The site was already up to date; nothing changed.'}
           </Alert>
         )}

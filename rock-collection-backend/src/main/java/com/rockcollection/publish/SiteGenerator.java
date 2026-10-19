@@ -10,15 +10,14 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
+import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Month;
 import java.time.format.TextStyle;
 import java.util.*;
-import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -40,9 +39,9 @@ public class SiteGenerator {
 
     public SiteGenerator() {
         // Partials ({{> head}}) come from site/_head.mustache; variables that are null render as empty text
-        compiler = Mustache.compiler().nullValue("").withLoader(name -> reader("site/_" + name + ".mustache"));
-        indexTemplate = compiler.compile(reader("site/index.mustache"));
-        specimenTemplate = compiler.compile(reader("site/specimen.mustache"));
+        compiler = Mustache.compiler().nullValue("").withLoader(name -> new StringReader(text("site/_" + name + ".mustache")));
+        indexTemplate = compiler.compile(text("site/index.mustache"));
+        specimenTemplate = compiler.compile(text("site/specimen.mustache"));
     }
 
     /** What to publish; {@code photos} maps a specimen id to its photos, cover first. */
@@ -132,7 +131,7 @@ public class SiteGenerator {
 
     private SpecimenPage specimenPage(Specimen s, Set<PublishField> fields, List<SpecimenPhoto> photos, Specimen prev, Specimen next) {
         String root = "../../";
-        Function<PublishField, Boolean> on = fields::contains;
+        Predicate<PublishField> on = fields::contains;
 
         List<PagePhoto> pagePhotos = new ArrayList<>();
         for (int i = 0; i < photos.size(); i++) {
@@ -141,47 +140,47 @@ public class SiteGenerator {
                     "%s, photo %d of %d".formatted(s.getName(), i + 1, photos.size()), p.getCaption(), i + 1, i == 0));
         }
 
-        Identity identity = on.apply(PublishField.IDENTITY)
+        Identity identity = on.test(PublishField.IDENTITY)
                 ? new Identity(s.getComponents().isEmpty(), s.getComponents().stream().map(SiteGenerator::component).toList())
                 : null;
 
         List<Section> sections = Stream.of(
                 section("What it is", Arrays.asList(
-                        row(on.apply(PublishField.FORM), "Form", label(SiteLabels.FORM, s.getForm())),
-                        row(on.apply(PublishField.NATURE), "Nature", label(SiteLabels.NATURE, s.getNature())),
-                        row(on.apply(PublishField.TREATMENT), "Treatment", s.getTreatmentNotes()),
-                        row(on.apply(PublishField.INCLUSIONS), "Unidentified inclusions", s.getInclusions()))),
+                        row(on.test(PublishField.FORM), "Form", label(SiteLabels.FORM, s.getForm())),
+                        row(on.test(PublishField.NATURE), "Nature", label(SiteLabels.NATURE, s.getNature())),
+                        row(on.test(PublishField.TREATMENT), "Treatment", s.getTreatmentNotes()),
+                        row(on.test(PublishField.INCLUSIONS), "Unidentified inclusions", s.getInclusions()))),
                 section("Appearance", Arrays.asList(
-                        row(on.apply(PublishField.COLOR), "Colour", join(", ", s.getColor(), s.getSecondaryColor())),
-                        row(on.apply(PublishField.LUSTER), "Luster", s.getLuster()),
-                        row(on.apply(PublishField.TRANSPARENCY), "Transparency", s.getTransparency()),
-                        row(on.apply(PublishField.OPTICAL_EFFECTS), "Optical effects",
+                        row(on.test(PublishField.COLOR), "Colour", join(", ", s.getColor(), s.getSecondaryColor())),
+                        row(on.test(PublishField.LUSTER), "Luster", s.getLuster()),
+                        row(on.test(PublishField.TRANSPARENCY), "Transparency", s.getTransparency()),
+                        row(on.test(PublishField.OPTICAL_EFFECTS), "Optical effects",
                                 labels(s.opticalEffectValues(), SiteLabels.OPTICAL_EFFECT)))),
                 section("Physical properties", Arrays.asList(
-                        row(on.apply(PublishField.HARDNESS), "Hardness (Mohs)", hardness(s.getHardnessMin(), s.getHardnessMax())),
-                        row(on.apply(PublishField.STREAK), "Streak", s.getStreak()),
-                        row(on.apply(PublishField.SPECIFIC_GRAVITY), "Specific gravity", number(s.getSpecificGravity())),
-                        row(on.apply(PublishField.CLEAVAGE), "Cleavage", s.getCleavage()),
-                        row(on.apply(PublishField.FRACTURE), "Fracture", s.getFracture()),
-                        row(on.apply(PublishField.CRYSTAL_HABIT), "Crystal habit", s.getCrystalHabit()),
-                        row(on.apply(PublishField.SPECIAL_PROPERTIES), "Special properties",
+                        row(on.test(PublishField.HARDNESS), "Hardness (Mohs)", hardness(s.getHardnessMin(), s.getHardnessMax())),
+                        row(on.test(PublishField.STREAK), "Streak", s.getStreak()),
+                        row(on.test(PublishField.SPECIFIC_GRAVITY), "Specific gravity", number(s.getSpecificGravity())),
+                        row(on.test(PublishField.CLEAVAGE), "Cleavage", s.getCleavage()),
+                        row(on.test(PublishField.FRACTURE), "Fracture", s.getFracture()),
+                        row(on.test(PublishField.CRYSTAL_HABIT), "Crystal habit", s.getCrystalHabit()),
+                        row(on.test(PublishField.SPECIAL_PROPERTIES), "Special properties",
                                 labels(s.specialPropertyValues(), SiteLabels.SPECIAL_PROPERTY)),
-                        row(on.apply(PublishField.OTHER_OBSERVATIONS), "Other observations", s.getOtherObservations()))),
+                        row(on.test(PublishField.OTHER_OBSERVATIONS), "Other observations", s.getOtherObservations()))),
                 section("Size & weight", Arrays.asList(
-                        row(on.apply(PublishField.WEIGHT), "Weight", s.getWeightG() == null ? null : number(s.getWeightG()) + " g"),
-                        row(on.apply(PublishField.SIZE), "Size", size(s.getLengthMm(), s.getWidthMm(), s.getHeightMm())))),
+                        row(on.test(PublishField.WEIGHT), "Weight", s.getWeightG() == null ? null : number(s.getWeightG()) + " g"),
+                        row(on.test(PublishField.SIZE), "Size", size(s.getLengthMm(), s.getWidthMm(), s.getHeightMm())))),
                 section("Origin & acquisition", Arrays.asList(
-                        row(on.apply(PublishField.LOCALITY), "Locality", join(", ", s.getLocality(), s.getCountry())),
-                        row(on.apply(PublishField.ACQUISITION_TYPE), "Source", label(SiteLabels.ACQUISITION, s.getAcquisitionType())),
-                        row(on.apply(PublishField.ACQUIRED_FROM), "Where I got it", join(", ", s.getAcquiredFrom(), s.getAcquiredCountry())),
-                        row(on.apply(PublishField.ACQUIRED_DATE), "Acquired", date(s.getAcquiredYear(), s.getAcquiredMonth(), s.getAcquiredDay())),
-                        row(on.apply(PublishField.PRICE), "Price", s.getPrice() == null ? null
+                        row(on.test(PublishField.LOCALITY), "Locality", join(", ", s.getLocality(), s.getCountry())),
+                        row(on.test(PublishField.ACQUISITION_TYPE), "Source", label(SiteLabels.ACQUISITION, s.getAcquisitionType())),
+                        row(on.test(PublishField.ACQUIRED_FROM), "Where I got it", join(", ", s.getAcquiredFrom(), s.getAcquiredCountry())),
+                        row(on.test(PublishField.ACQUIRED_DATE), "Acquired", date(s.getAcquiredYear(), s.getAcquiredMonth(), s.getAcquiredDay())),
+                        row(on.test(PublishField.PRICE), "Price", s.getPrice() == null ? null
                                 : join(" ", number(s.getPrice()), s.getCurrency())))))
                 .filter(Objects::nonNull).toList();
 
-        List<String> tags = on.apply(PublishField.TAGS) ? List.copyOf(s.getTags()) : List.of();
-        List<String> description = on.apply(PublishField.DESCRIPTION) ? paragraphs(s.getDescription()) : List.of();
-        String marketName = on.apply(PublishField.MARKET_NAME) ? s.getMarketName() : null;
+        List<String> tags = on.test(PublishField.TAGS) ? List.copyOf(s.getTags()) : List.of();
+        List<String> description = on.test(PublishField.DESCRIPTION) ? paragraphs(s.getDescription()) : List.of();
+        String marketName = on.test(PublishField.MARKET_NAME) ? s.getMarketName() : null;
         return new SpecimenPage(root, "#%d %s · Rock Collection".formatted(s.getId(), s.getName()),
                 "Specimen #%d: %s. Photos and observations, for help with identification.".formatted(s.getId(), s.getName()),
                 s.getId(), s.getName(), marketName, tags, !tags.isEmpty(),
@@ -265,12 +264,8 @@ public class SiteGenerator {
         return template.execute(model).getBytes(StandardCharsets.UTF_8);
     }
 
-    private static Reader reader(String path) {
-        try {
-            return new InputStreamReader(new ClassPathResource(path).getInputStream(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Missing site resource " + path, e);
-        }
+    private static String text(String path) {
+        return new String(bytes(path), StandardCharsets.UTF_8);
     }
 
     private static byte[] bytes(String path) {

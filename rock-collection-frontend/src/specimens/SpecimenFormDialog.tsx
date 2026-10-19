@@ -303,7 +303,11 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
                   Choose photos
                 </Button>
                 <input ref={photoInput} type="file" accept={PHOTO_TYPES} multiple hidden aria-label="Photo files"
-                  onChange={e => { const chosen = Array.from(e.target.files ?? []); setPhotoFiles(prev => [...prev, ...chosen]); e.target.value = ''; }} />
+                  onChange={e => {
+                    const chosen = Array.from(e.target.files ?? []);
+                    setPhotoFiles(prev => [...prev, ...chosen]);
+                    e.target.value = ''; // so choosing the same file again still fires onChange
+                  }} />
                 {photoFiles.length === 0 && (
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>Optional; the first becomes the table photo</Typography>
                 )}
@@ -348,7 +352,9 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
                     </TextField>
                     <TextField select sx={{ flex: 1 }} label="Certainty" value={c.certainty}
                       onChange={e => updateComponent(i, { certainty: e.target.value as IdentificationCertainty })}>
-                      {(Object.keys(CERTAINTY_LABELS) as IdentificationCertainty[]).map(k => <MenuItem key={k} value={k}>{CERTAINTY_LABELS[k]}</MenuItem>)}
+                      {(Object.keys(CERTAINTY_LABELS) as IdentificationCertainty[]).map(k => (
+                        <MenuItem key={k} value={k}>{CERTAINTY_LABELS[k]}</MenuItem>
+                      ))}
                     </TextField>
                     <IconButton aria-label="Remove material" onClick={() => setComponents(prev => prev.filter((_, j) => j !== i))}>
                       <CloseIcon />
@@ -356,7 +362,9 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
                   </Stack>
                 ))}
                 <Button sx={{ alignSelf: 'flex-start' }}
-                  onClick={() => setComponents(prev => [...prev, { material: null, role: prev.length ? 'INCLUSION' : 'HOST', certainty: 'TENTATIVE' }])}>
+                  onClick={() => setComponents(prev => [
+                    ...prev, { material: null, role: prev.length ? 'INCLUSION' : 'HOST', certainty: 'TENTATIVE' },
+                  ])}>
                   + Add material
                 </Button>
                 {text('inclusions', 'Unidentified inclusions', { multiline: true, helperText: 'e.g. “tiny black needles”' })}

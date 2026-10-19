@@ -63,9 +63,7 @@ public class PhotoService {
     public List<PhotoDto> upload(Long specimenId, List<MultipartFile> files) {
         requireSpecimen(specimenId);
         if (files == null || files.isEmpty()) throw new BadRequestException("No photos were sent");
-        if (!gitHub.isConfigured()) {
-            throw new GitHubException("The GitHub Pages repo isn't set up: GITHUB_TOKEN is missing (see .env.example)");
-        }
+        gitHub.requireConfigured();
 
         List<SpecimenPhoto> existing = photos(specimenId);
         int position = existing.isEmpty() ? 0 : existing.getLast().getPosition() + 1;
