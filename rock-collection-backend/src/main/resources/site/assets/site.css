@@ -145,6 +145,20 @@ h2 { font-size: 1rem; line-height: 1.5rem; font-weight: 500; letter-spacing: 0.1
 .gallery-dots button { width: 28px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .gallery-dots span { width: 8px; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.4); transition: width 150ms; }
 .gallery-dots [aria-current="true"] span { width: 20px; background: #fff; }
+.gallery-enhanced .gallery-slide img { cursor: zoom-in; }
+.gallery-tool {
+  position: absolute; top: 8px; right: 8px; z-index: 1; width: 40px; height: 40px; border: 0; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.4); color: #fff; cursor: pointer;
+}
+.gallery-tool:hover { background: rgba(0, 0, 0, 0.6); }
+
+/* Full screen (site.js): the same gallery fixed over the page; the page behind doesn't scroll */
+.viewer-open { overflow: hidden; }
+.gallery.is-fullscreen { position: fixed; inset: 0; z-index: 10; margin: 0; border-radius: 0; display: flex; flex-direction: column; }
+.is-fullscreen .gallery-track { flex: 1; min-height: 0; }
+.is-fullscreen .gallery-slide { height: 100%; }
+.is-fullscreen .gallery-slide img { max-height: calc(100vh - 96px); max-height: calc(100dvh - 96px); cursor: auto; }
 
 .panel { margin-bottom: 16px; padding: 20px 24px; border-radius: 16px; background: var(--md-surface-container-low); }
 .panel p { margin: 0 0 8px; }

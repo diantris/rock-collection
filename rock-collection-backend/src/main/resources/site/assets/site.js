@@ -40,21 +40,22 @@
   // ---- specimen page: gallery ------------------------------------------------------------------------------------
   Array.prototype.forEach.call(document.querySelectorAll('[data-gallery]'), function (gallery) {
     var track = gallery.querySelector('[data-gallery-track]');
-    var dots = gallery.querySelector('[data-gallery-dots]');
     var slides = track.children;
-    if (!dots || slides.length < 2) return;
-    var dotButtons = dots.querySelectorAll('button');
+    var dots = gallery.querySelector('[data-gallery-dots]');
+    var dotButtons = dots ? dots.querySelectorAll('button') : [];
+    var expandButton = gallery.querySelector('[data-gallery-expand]');
+    var closeButton = gallery.querySelector('[data-gallery-close]');
     var current = 0;
 
-    var show = function (index) {
-      current = (index + slides.length) % slides.length; // wraps around
-      track.scrollTo({ left: current * track.clientWidth, behavior: 'smooth' });
-      mark(current);
-    };
     var mark = function (index) {
       Array.prototype.forEach.call(dotButtons, function (b, i) {
         if (i === index) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
       });
+    };
+    var show = function (index, instant) {
+      current = (index + slides.length) % slides.length; // wraps around
+      track.scrollTo({ left: current * track.clientWidth, behavior: instant ? 'auto' : 'smooth' });
+      mark(current);
     };
 
     // Swiping or scrolling the track moves the dots along
@@ -67,15 +68,50 @@
       }, 60);
     });
 
-    gallery.querySelector('[data-gallery-prev]').addEventListener('click', function () { show(current - 1); });
-    gallery.querySelector('[data-gallery-next]').addEventListener('click', function () { show(current + 1); });
-    Array.prototype.forEach.call(dotButtons, function (b, i) { b.addEventListener('click', function () { show(i); }); });
-    gallery.addEventListener('keydown', function (e) {
-      if (e.key === 'ArrowLeft') { e.preventDefault(); show(current - 1); }
-      if (e.key === 'ArrowRight') { e.preventDefault(); show(current + 1); }
+    if (slides.length > 1) {
+      gallery.querySelector('[data-gallery-prev]').addEventListener('click', function () { show(current - 1); });
+      gallery.querySelector('[data-gallery-next]').addEventListener('click', function () { show(current + 1); });
+      Array.prototype.forEach.call(dotButtons, function (b, i) { b.addEventListener('click', function () { show(i); }); });
+      Array.prototype.forEach.call(gallery.querySelectorAll('.gallery-arrow, [data-gallery-dots]'), function (el) { el.hidden = false; });
+    }
+
+    // Full screen: the same gallery, fixed over the page. It adds a history entry, so the browser's or phone's
+    // Back button closes it (instead of leaving the page), and so do the close button and Escape.
+    var fullScreen = false;
+    var setFullScreen = function (on) {
+      fullScreen = on;
+      gallery.classList.toggle('is-fullscreen', on);
+      document.documentElement.classList.toggle('viewer-open', on);
+      expandButton.hidden = on;
+      closeButton.hidden = !on;
+      show(current, true); // the track changed size; stay on the same photo
+      (on ? closeButton : expandButton).focus({ preventScroll: true });
+    };
+    var open = function () {
+      if (fullScreen) return;
+      history.pushState({ photoViewer: true }, '');
+      setFullScreen(true);
+    };
+    var close = function () {
+      if (fullScreen) history.back(); // popstate below does the closing
+    };
+    window.addEventListener('popstate', function () {
+      if (fullScreen) setFullScreen(false);
+    });
+    expandButton.addEventListener('click', open);
+    closeButton.addEventListener('click', close);
+    track.addEventListener('click', function (e) {
+      if (e.target.tagName === 'IMG') open();
     });
 
-    Array.prototype.forEach.call(gallery.querySelectorAll('[hidden]'), function (el) { el.hidden = false; });
+    gallery.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowLeft' && slides.length > 1) { e.preventDefault(); show(current - 1); }
+      if (e.key === 'ArrowRight' && slides.length > 1) { e.preventDefault(); show(current + 1); }
+      if (e.key === 'Escape' && fullScreen) { e.preventDefault(); close(); }
+    });
+
+    gallery.classList.add('gallery-enhanced');
+    expandButton.hidden = false;
     mark(0);
   });
 })();

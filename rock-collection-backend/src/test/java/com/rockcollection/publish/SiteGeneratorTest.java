@@ -152,8 +152,11 @@ class SiteGeneratorTest {
         String five = site.get("specimens/5/index.html");
         assertThat(five).contains("aria-label=\"Photo 1\"", "aria-label=\"Photo 2\"", "Five, photo 2 of 2",
                 "href=\"../3/\"", "href=\"../9/\"", "width=\"1600\" height=\"1200\"");
+        // Photos open full screen on the page (site.js), never as a bare image file with no way back
+        assertThat(five).contains("aria-label=\"View photos full screen\"", "aria-label=\"Close full screen\"")
+                .doesNotContain("<a href=\"../../photos/");
         String nine = site.get("specimens/9/index.html");
-        assertThat(nine).contains("../../photos/9/only.jpg").doesNotContain("aria-label=\"Photo 1\"", "rel=\"next\"");
+        assertThat(nine).contains("../../photos/9/only.jpg", "View photos full screen").doesNotContain("aria-label=\"Photo 1\"", "rel=\"next\"");
         assertThat(site.get("specimens/3/index.html")).contains("No photos yet").doesNotContain("rel=\"prev\"");
     }
 
