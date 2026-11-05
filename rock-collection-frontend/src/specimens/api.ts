@@ -76,10 +76,15 @@ export function fetchPhotos(specimenId: number): Promise<Photo[]> {
   return request(`/api/specimens/${specimenId}/photos`);
 }
 
-/** Uploads photos (resized and stripped of EXIF/GPS on the server, then pushed to the Pages repo); returns all photos. */
+/**
+ * Uploads photos (resized and stripped of EXIF/GPS on the server, then pushed to the Pages repo); returns all photos.
+ * They're sent in file-name order, because browsers don't reliably keep it: numbered names set the photos' order,
+ * and the first of a specimen's photos becomes its cover. "2-back" comes before "10-macro".
+ */
 export function uploadPhotos(specimenId: number, files: File[]): Promise<Photo[]> {
   const body = new FormData();
-  for (const file of files) body.append('files', file);
+  const byName = [...files].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  for (const file of byName) body.append('files', file);
   return request(`/api/specimens/${specimenId}/photos`, { method: 'POST', body });
 }
 

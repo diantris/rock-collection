@@ -109,12 +109,13 @@ test('Details: upload photos, make one the cover and delete one', async ({ page 
   await expect(section.getByText('No photos yet')).toBeVisible();
 
   await section.getByLabel('Photo files').setInputFiles([
-    { name: 'front.jpg', mimeType: 'image/jpeg', buffer: PIXEL },
-    { name: 'back.jpg', mimeType: 'image/jpeg', buffer: PIXEL },
+    { name: '10-macro.jpg', mimeType: 'image/jpeg', buffer: PIXEL },
+    { name: '2-back.jpg', mimeType: 'image/jpeg', buffer: PIXEL },
+    { name: '1-front.jpg', mimeType: 'image/jpeg', buffer: PIXEL },
   ]);
   await expect(section.getByRole('button', { name: /^Open photo/ })).toHaveCount(2);
-  expect(uploadedBody).toContain('filename="front.jpg"');
-  expect(uploadedBody).toContain('filename="back.jpg"');
+  // Sent in file-name order, whatever order they were chosen in, with numbers compared as numbers
+  expect([...uploadedBody.matchAll(/filename="([^"]+)"/g)].map(m => m[1])).toEqual(['1-front.jpg', '2-back.jpg', '10-macro.jpg']);
   await expect(section.getByText('Cover')).toBeVisible();
 
   await section.getByRole('button', { name: 'Make photo 2 the cover' }).click();
