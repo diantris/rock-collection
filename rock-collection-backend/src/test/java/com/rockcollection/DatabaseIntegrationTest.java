@@ -176,9 +176,14 @@ class DatabaseIntegrationTest {
                 .readValue("{\"name\": \"Given away\", \"gone\": true}", SpecimenDto.Request.class)).id();
         assertThat(specimenService.findById(gone).gone()).isTrue();
         assertThat(specimenService.findById(gone).published()).isTrue();
+        Long goneHidden = specimenService.create(JsonMapper.builder().build()
+                .readValue("{\"name\": \"Sold, was hidden\", \"gone\": true, \"published\": false}", SpecimenDto.Request.class)).id();
         PublishDto.Settings settings = publishService.publishAllSpecimens();
-        assertThat(settings.goneCount()).isEqualTo(1);
-        assertThat(settings.publicCount()).isEqualTo(settings.totalCount() - 1);
+        assertThat(settings.goneCount()).isEqualTo(2);
+        assertThat(settings.publicCount()).isEqualTo(settings.totalCount() - 2);
+        // "Show all specimens" leaves gone stones' own switch alone
+        assertThat(specimenService.findById(goneHidden).published()).isFalse();
         specimenService.delete(gone);
+        specimenService.delete(goneHidden);
     }
 }

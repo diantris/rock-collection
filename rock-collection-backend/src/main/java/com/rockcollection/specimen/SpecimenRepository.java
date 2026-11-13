@@ -20,8 +20,11 @@ public interface SpecimenRepository extends JpaRepository<Specimen, Long> {
     /** Specimens no longer in the collection (never published). */
     long countByGoneTrue();
 
-    /** Shows every specimen on the public site; returns how many changed. */
+    /**
+     * Shows every specimen on the public site; returns how many changed. Gone ones keep their switch as it was,
+     * so unmarking one restores it unchanged.
+     */
     @Modifying
-    @Query("UPDATE Specimen s SET s.published = true WHERE s.published = false")
+    @Query("UPDATE Specimen s SET s.published = true WHERE s.published = false AND s.gone = false")
     int publishAll();
 }

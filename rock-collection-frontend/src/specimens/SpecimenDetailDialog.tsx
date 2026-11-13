@@ -95,7 +95,7 @@ const SpecimenDetailDialog: React.FC<Props> = ({ specimenId, refreshKey = 0, onC
         {s && (
           <>
             {s.gone && (
-              <Alert severity="info" sx={{ mb: 2 }}>No longer in your collection. It isn’t shown on the public site.</Alert>
+              <Alert severity="info" sx={{ mb: 2 }}>No longer in your collection. It’s left off the public site from your next publish.</Alert>
             )}
             {s.tags.length > 0 && (
               <Stack direction="row" sx={{ gap: 0.5, flexWrap: 'wrap', mb: 2 }}>

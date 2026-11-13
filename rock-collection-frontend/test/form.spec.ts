@@ -60,7 +60,7 @@ test('A stone marked as no longer in the collection is greyed out and kept off t
     await form.getByRole('button', { name: 'Save' }).click();
 
     const detail = page.getByRole('dialog', { name: new RegExp(`#${specimen.id}`) });
-    await expect(detail.getByText('No longer in your collection. It isn’t shown on the public site.')).toBeVisible();
+    await expect(detail.getByText('No longer in your collection. It’s left off the public site from your next publish.')).toBeVisible();
     // The public switch is kept, so unmarking the stone restores it as it was
     expect(await (await request.get(`${API}/specimens/${specimen.id}`)).json()).toMatchObject({ gone: true, published: true });
 
@@ -117,6 +117,13 @@ test('A new material can be created from inside the specimen form; Type comes fr
     const materialDialog = page.getByRole('dialog', { name: 'Add a material' });
     await expect(materialDialog.getByRole('textbox', { name: 'Scientific name' })).toHaveValue(materialName);
     // A mineraloid only offers mineraloid families and starts without a crystal structure
+    await materialDialog.getByRole('combobox', { name: 'Type' }).click();
+    await page.getByRole('option', { name: 'Mineraloid' }).click();
+    await expect(materialDialog.getByRole('combobox', { name: 'Crystal system' })).toHaveText('Amorphous (no crystal structure)');
+    // A mineral always has a crystal structure, so switching to Mineral clears it again
+    await materialDialog.getByRole('combobox', { name: 'Type' }).click();
+    await page.getByRole('option', { name: 'Mineral', exact: true }).click();
+    await expect(materialDialog.getByRole('combobox', { name: 'Crystal system' })).not.toHaveText(/Amorphous/);
     await materialDialog.getByRole('combobox', { name: 'Type' }).click();
     await page.getByRole('option', { name: 'Mineraloid' }).click();
     await expect(materialDialog.getByRole('combobox', { name: 'Crystal system' })).toHaveText('Amorphous (no crystal structure)');

@@ -37,11 +37,15 @@ const AddMaterialDialog: React.FC<Props> = ({ open, initialName = '', onClose, o
   const set = <K extends keyof typeof emptyForm>(field: K, value: (typeof emptyForm)[K]) =>
     setForm(prev => ({ ...prev, [field]: value }));
 
-  /** Only the new type's families fit; mineraloids never have a crystal structure, so they start as amorphous. */
+  /**
+   * Only the new type's families fit. Mineraloids never have a crystal structure, so they start as amorphous;
+   * a mineral always has one, so switching to Mineral clears "amorphous" again.
+   */
   const setCategory = (category: MaterialCategory) => setForm(prev => ({
     ...prev, category,
     family: prev.family && FAMILIES_BY_CATEGORY[category].includes(prev.family) ? prev.family : '',
-    crystalSystem: category === 'MINERALOID' && !prev.crystalSystem ? 'AMORPHOUS' : prev.crystalSystem,
+    crystalSystem: category === 'MINERALOID' && !prev.crystalSystem ? 'AMORPHOUS'
+      : category === 'MINERAL' && prev.crystalSystem === 'AMORPHOUS' ? '' : prev.crystalSystem,
   }));
 
   const handleSave = async () => {
