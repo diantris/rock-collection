@@ -89,6 +89,9 @@ public class Specimen {
     // Admin
     @Column(nullable = false)
     private boolean published;
+    /** No longer in the owner's collection: kept for its number and history, never published. */
+    @Column(nullable = false)
+    private boolean gone;
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -211,6 +214,8 @@ public class Specimen {
     public void setPrivateNotes(String privateNotes) { this.privateNotes = privateNotes; }
     public boolean isPublished() { return published; }
     public void setPublished(boolean published) { this.published = published; }
+    public boolean isGone() { return gone; }
+    public void setGone(boolean gone) { this.gone = gone; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public List<SpecimenComponent> getComponents() { return components; }

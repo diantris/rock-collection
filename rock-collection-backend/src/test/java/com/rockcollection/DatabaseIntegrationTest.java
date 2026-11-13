@@ -161,4 +161,16 @@ class DatabaseIntegrationTest {
         assertThat(photoRepository.findBySpecimenIdInOrderBySpecimenIdAscPositionAscIdAsc(List.of(hidden))).isEmpty();
         specimenService.delete(hidden);
     }
+
+    @Test
+    void goneSpecimensKeepTheirPublicSwitchButAreNeverPublished() {
+        Long gone = specimenService.create(JsonMapper.builder().build()
+                .readValue("{\"name\": \"Given away\", \"gone\": true}", SpecimenDto.Request.class)).id();
+        assertThat(specimenService.findById(gone).gone()).isTrue();
+        assertThat(specimenService.findById(gone).published()).isTrue();
+        PublishDto.Settings settings = publishService.publishAllSpecimens();
+        assertThat(settings.goneCount()).isEqualTo(1);
+        assertThat(settings.publicCount()).isEqualTo(settings.totalCount() - 1);
+        specimenService.delete(gone);
+    }
 }

@@ -42,6 +42,36 @@ test('Clicking a row opens the details; editing hardness with a decimal comma sa
   }
 });
 
+test('A stone marked as no longer in the collection is greyed out and kept off the public site', async ({ page, request }) => {
+  const specimen = await createSpecimen(request, { name: `Gone test ${Date.now()}` });
+  try {
+    await page.goto('/');
+    await page.getByRole('button', { name: '#' }).click();
+    await page.getByRole('button', { name: '#' }).click(); // newest first
+    await page.getByRole('row', { name: new RegExp(specimen.name) }).click();
+    await page.getByRole('dialog', { name: new RegExp(`#${specimen.id}`) }).getByRole('button', { name: 'Edit' }).click();
+
+    const form = page.getByRole('dialog', { name: `Edit #${specimen.id}` });
+    const pub = form.getByLabel('Show on the public site', { exact: true });
+    await expect(pub).toBeChecked();
+    await form.getByLabel('No longer in my collection', { exact: true }).click();
+    await expect(pub).not.toBeChecked();
+    await expect(pub).toBeDisabled();
+    await form.getByRole('button', { name: 'Save' }).click();
+
+    const detail = page.getByRole('dialog', { name: new RegExp(`#${specimen.id}`) });
+    await expect(detail.getByText('No longer in your collection. It isn’t shown on the public site.')).toBeVisible();
+    // The public switch is kept, so unmarking the stone restores it as it was
+    expect(await (await request.get(`${API}/specimens/${specimen.id}`)).json()).toMatchObject({ gone: true, published: true });
+
+    await detail.getByRole('button', { name: 'Close' }).click();
+    await expect(detail).toHaveCount(0);
+    await expect(page.getByRole('row', { name: new RegExp(specimen.name) }).getByText('Gone', { exact: true })).toBeVisible();
+  } finally {
+    await request.delete(`${API}/specimens/${specimen.id}`);
+  }
+});
+
 test('"Add & next" keeps where-I-got-it details for the next specimen', async ({ page, request }) => {
   const prefix = `Batch test ${Date.now()}`;
   try {

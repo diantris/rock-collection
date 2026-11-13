@@ -58,11 +58,11 @@ public class PublishService {
 
     /**
      * Regenerates the whole site from the current data and commits it to the Pages repo in one commit.
-     * Photos stay where they are; pages of specimens that are no longer public are removed.
+     * Photos stay where they are; pages of specimens that are no longer public (or are gone) are removed.
      */
     public PublishDto.Result publish() {
         PublishSettings settings = load();
-        List<Specimen> specimens = specimenRepository.findByPublishedTrueOrderByIdAsc();
+        List<Specimen> specimens = specimenRepository.findByPublishedTrueAndGoneFalseOrderByIdAsc();
         Map<Long, List<SpecimenPhoto>> photos = photoRepository
                 .findBySpecimenIdInOrderBySpecimenIdAscPositionAscIdAsc(specimens.stream().map(Specimen::getId).toList())
                 .stream().collect(Collectors.groupingBy(SpecimenPhoto::getSpecimenId, LinkedHashMap::new, Collectors.toList()));
@@ -101,6 +101,7 @@ public class PublishService {
                 .map(f -> new PublishDto.Field(f, f.label(), f.group().label(), included.contains(f))).toList();
         return new PublishDto.Settings(fields, settings.getIntro(), settings.getLastPublishedAt(),
                 gitHub.isConfigured() ? gitHub.pagesUrl() : null,
-                specimenRepository.countByPublishedTrue(), specimenRepository.count(), gitHub.isConfigured());
+                specimenRepository.countByPublishedTrueAndGoneFalse(), specimenRepository.countByGoneTrue(),
+                specimenRepository.count(), gitHub.isConfigured());
     }
 }

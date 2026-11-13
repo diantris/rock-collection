@@ -102,9 +102,10 @@ const PublishDialog: React.FC<Props> = ({ open, onClose, onSpecimensChanged }) =
               <Typography variant="subtitle1" component="h3" sx={{ color: 'primary.main', mb: 0.5 }}>Specimens</Typography>
               <Stack direction="row" sx={{ gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
                 <Typography variant="body2">
-                  {settings.publicCount} of {settings.totalCount} specimens are shown on the site.
+                  {settings.publicCount} of {settings.totalCount} specimens are shown on the site
+                  {settings.goneCount > 0 && ` (${settings.goneCount} no longer in the collection)`}.
                 </Typography>
-                {settings.publicCount < settings.totalCount && (
+                {settings.publicCount < settings.totalCount - settings.goneCount && (
                   <Button size="small" variant="outlined" onClick={showAll}>Show all specimens</Button>
                 )}
               </Stack>

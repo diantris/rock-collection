@@ -67,6 +67,7 @@ class SpecimenServiceTest {
         assertThat(created.name()).isEqualTo("Quartz with garnet");
         assertThat(created.color()).isNull();
         assertThat(created.published()).isTrue(); // shown on the public site unless switched off
+        assertThat(created.gone()).isFalse();
         assertThat(created.specialProperties()).isEmpty();
         assertThat(created.components()).singleElement().satisfies(c -> {
             assertThat(c.materialName()).isEqualTo("Quartz");
@@ -86,6 +87,16 @@ class SpecimenServiceTest {
         assertThat(single.hardnessMax()).isEqualByComparingTo("6.5");
         assertThat(reversed.hardnessMin()).isEqualByComparingTo("5.5");
         assertThat(reversed.hardnessMax()).isEqualByComparingTo("7");
+    }
+
+    @Test
+    void create_goneKeepsThePublicSwitchAsSent() {
+        saveReturnsArgument();
+
+        SpecimenDto.Detail gone = service.create(request("{\"name\": \"Given away\", \"gone\": true, \"published\": true}"));
+
+        assertThat(gone.gone()).isTrue();
+        assertThat(gone.published()).isTrue(); // publishing skips it; unmarking it restores it as it was
     }
 
     @Test

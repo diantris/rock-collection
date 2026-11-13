@@ -100,6 +100,8 @@ export interface SpecimenSummary {
   currency: string | null;
   tags: string[];
   published: boolean;
+  /** No longer in the collection: greyed out in the app and never published, whatever `published` says. */
+  gone: boolean;
   /** Changes whenever the thumbnail does; null when the specimen has no photos. */
   thumbnailVersion: number | null;
 }
@@ -199,6 +201,8 @@ export interface SpecimenDetail {
   description: string | null;
   privateNotes: string | null;
   published: boolean;
+  /** No longer in the collection: never published, whatever `published` says. */
+  gone: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -220,7 +224,10 @@ export interface PublishSettings {
   lastPublishedAt: string | null;
   /** Address of the public site; null when GitHub isn't set up. */
   siteUrl: string | null;
+  /** Specimens that will show on the site: marked public and not gone. */
   publicCount: number;
+  /** Specimens no longer in the collection, which are never published. */
+  goneCount: number;
   totalCount: number;
   gitHubConfigured: boolean;
 }

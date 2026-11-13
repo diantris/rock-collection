@@ -60,11 +60,12 @@ type FormState = Record<TextField_ | NumberField, string> & {
   opticalEffects: OpticalEffect[];
   tags: string[];
   published: boolean;
+  gone: boolean;
 };
 
 const emptyForm = (): FormState => ({
   ...(Object.fromEntries([...TEXT_FIELDS, ...NUMBER_FIELDS].map(f => [f, ''])) as Record<TextField_ | NumberField, string>),
-  form: '', nature: '', acquisitionType: '', specialProperties: [], opticalEffects: [], tags: [], published: true,
+  form: '', nature: '', acquisitionType: '', specialProperties: [], opticalEffects: [], tags: [], published: true, gone: false,
 });
 
 function fromDetail(d: SpecimenDetail): FormState {
@@ -73,7 +74,7 @@ function fromDetail(d: SpecimenDetail): FormState {
   for (const k of NUMBER_FIELDS) f[k] = d[k] === null ? '' : String(d[k]);
   return {
     ...f, form: d.form ?? '', nature: d.nature ?? '', acquisitionType: d.acquisitionType ?? '',
-    specialProperties: d.specialProperties, opticalEffects: d.opticalEffects, tags: d.tags, published: d.published,
+    specialProperties: d.specialProperties, opticalEffects: d.opticalEffects, tags: d.tags, published: d.published, gone: d.gone,
   };
 }
 
@@ -172,7 +173,7 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
       ...body,
       currency: form.currency.trim().toUpperCase(),
       form: form.form || null, nature: form.nature || null, acquisitionType: form.acquisitionType || null,
-      specialProperties: form.specialProperties, opticalEffects: form.opticalEffects, tags: form.tags, published: form.published,
+      specialProperties: form.specialProperties, opticalEffects: form.opticalEffects, tags: form.tags, published: form.published, gone: form.gone,
       components: components.filter(c => c.material !== null)
         .map(c => ({ materialId: c.material!.id, role: c.role, certainty: c.certainty })),
     };
@@ -413,8 +414,18 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
               </>)}
             </Box>
 
-            <FormControlLabel control={<Switch checked={form.published} onChange={e => set('published', e.target.checked)} />}
-              label="Show on the public site" />
+            <Box>
+              {/* A gone stone is never published; its own switch is kept, so unmarking it restores it as it was */}
+              <FormControlLabel control={<Switch checked={form.published && !form.gone} disabled={form.gone}
+                onChange={e => set('published', e.target.checked)} />} label="Show on the public site" />
+              <FormControlLabel control={<Switch checked={form.gone} onChange={e => set('gone', e.target.checked)} />}
+                label="No longer in my collection" />
+              {form.gone && (
+                <Typography variant="caption" component="p" sx={{ color: 'text.secondary' }}>
+                  Kept with its number, greyed out, and never on the public site. Note why in Private notes, if you like.
+                </Typography>
+              )}
+            </Box>
             {error && <Alert severity="error">{error}</Alert>}
           </Stack>
         )}

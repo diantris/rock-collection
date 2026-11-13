@@ -43,7 +43,7 @@ public final class SpecimenDto {
             MaterialCategory type, MaterialFamily family,
             SpecimenForm form, SpecimenNature nature, String country,
             AcquisitionType acquisitionType, String acquiredFrom, String acquiredCountry, Integer acquiredYear,
-            BigDecimal price, String currency, List<String> tags, boolean published, Long thumbnailVersion) {
+            BigDecimal price, String currency, List<String> tags, boolean published, boolean gone, Long thumbnailVersion) {
         /** @param thumbnailVersion changes whenever the thumbnail does; null when there's no photo */
         static Summary from(Specimen s, Long thumbnailVersion) {
             SpecimenComponent primary = s.primaryComponent();
@@ -53,7 +53,7 @@ public final class SpecimenDto {
                     primary != null ? primary.getMaterial().getFamily() : null,
                     s.getForm(), s.getNature(), s.getCountry(),
                     s.getAcquisitionType(), s.getAcquiredFrom(), s.getAcquiredCountry(), s.getAcquiredYear(),
-                    s.getPrice(), s.getCurrency(), List.copyOf(s.getTags()), s.isPublished(), thumbnailVersion);
+                    s.getPrice(), s.getCurrency(), List.copyOf(s.getTags()), s.isPublished(), s.isGone(), thumbnailVersion);
         }
     }
 
@@ -71,7 +71,7 @@ public final class SpecimenDto {
             AcquisitionType acquisitionType, String acquiredFrom, String acquiredCountry,
             Integer acquiredYear, Integer acquiredMonth, Integer acquiredDay, BigDecimal price, String currency,
             List<String> tags, String description, String privateNotes,
-            boolean published, Instant createdAt, Instant updatedAt) {
+            boolean published, boolean gone, Instant createdAt, Instant updatedAt) {
         static Detail from(Specimen s) {
             return new Detail(s.getId(), s.getName(), s.getMarketName(),
                     s.getForm(), s.getNature(), s.getTreatmentNotes(),
@@ -86,7 +86,7 @@ public final class SpecimenDto {
                     s.getAcquisitionType(), s.getAcquiredFrom(), s.getAcquiredCountry(),
                     s.getAcquiredYear(), s.getAcquiredMonth(), s.getAcquiredDay(), s.getPrice(), s.getCurrency(),
                     List.copyOf(s.getTags()), s.getDescription(), s.getPrivateNotes(),
-                    s.isPublished(), s.getCreatedAt(), s.getUpdatedAt());
+                    s.isPublished(), s.isGone(), s.getCreatedAt(), s.getUpdatedAt());
         }
     }
 
@@ -119,6 +119,6 @@ public final class SpecimenDto {
             @Pattern(regexp = "([A-Z]{3})?", message = "currency must be a 3-letter ISO code, e.g. PLN") String currency,
             List<@Size(max = 64) String> tags,
             String description, String privateNotes,
-            Boolean published) {
+            Boolean published, Boolean gone) {
     }
 }

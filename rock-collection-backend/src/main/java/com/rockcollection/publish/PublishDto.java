@@ -16,11 +16,12 @@ public final class PublishDto {
 
     /**
      * @param siteUrl          where the public site is served
-     * @param publicCount      specimens marked to show on the site
+     * @param publicCount      specimens that will show on the site (marked public and not gone)
+     * @param goneCount        specimens no longer in the collection, which are never published
      * @param gitHubConfigured false when the GitHub token is missing, so publishing can't work
      */
     public record Settings(List<Field> fields, String intro, Instant lastPublishedAt, String siteUrl,
-                           long publicCount, long totalCount, boolean gitHubConfigured) {}
+                           long publicCount, long goneCount, long totalCount, boolean gitHubConfigured) {}
 
     public record SettingsRequest(
             @NotNull(message = "fields is required") Set<PublishField> fields,

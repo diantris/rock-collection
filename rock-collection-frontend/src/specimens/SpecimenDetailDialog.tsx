@@ -94,6 +94,9 @@ const SpecimenDetailDialog: React.FC<Props> = ({ specimenId, refreshKey = 0, onC
         {!s && !error && <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>}
         {s && (
           <>
+            {s.gone && (
+              <Alert severity="info" sx={{ mb: 2 }}>No longer in your collection. It isn’t shown on the public site.</Alert>
+            )}
             {s.tags.length > 0 && (
               <Stack direction="row" sx={{ gap: 0.5, flexWrap: 'wrap', mb: 2 }}>
                 {s.tags.map(t => <Chip key={t} size="small" label={t} />)}
@@ -164,7 +167,7 @@ const SpecimenDetailDialog: React.FC<Props> = ({ specimenId, refreshKey = 0, onC
               ['Public description', s.description],
               ['Private notes', s.privateNotes],
               ['Treatment', s.treatmentNotes],
-              ['On the public site', s.published ? 'Yes' : 'No'],
+              ['On the public site', s.gone ? 'No (no longer in your collection)' : s.published ? 'Yes' : 'No'],
             ]} />
           </>
         )}

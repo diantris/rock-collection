@@ -42,7 +42,7 @@ const SpecimensTable: React.FC = () => {
   const [detailRefresh, setDetailRefresh] = useState(0);
   const [addMaterialOpen, setAddMaterialOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
-  const [toDelete, setToDelete] = useState<{ id: number; name: string; published: boolean } | null>(null);
+  const [toDelete, setToDelete] = useState<{ id: number; name: string; published: boolean; gone: boolean } | null>(null);
   // Gallery opened straight from a table photo
   const [gallery, setGallery] = useState<{ name: string; photos: Photo[] } | null>(null);
 
@@ -78,6 +78,9 @@ const SpecimensTable: React.FC = () => {
   const openGallery = (s: SpecimenSummary) => {
     fetchPhotos(s.id).then(photos => setGallery({ name: s.name, photos })).catch(err => setNotice(err.message));
   };
+
+  /** A stone no longer in the collection: faded text and a faded, grey photo (cells stay opaque for sticky columns). */
+  const goneRowSx = { '& td': { color: 'text.disabled' }, '& img': { filter: 'grayscale(1)', opacity: 0.5 } };
 
   /** Cell content; a table photo opens the gallery instead of the details. */
   const cell = (col: ColumnDef, s: SpecimenSummary) => {
@@ -146,7 +149,7 @@ const SpecimensTable: React.FC = () => {
                 </TableRow>
               )}
               {data?.content.map(s => (
-                <TableRow key={s.id} hover onClick={() => setDetailId(s.id)} sx={{ cursor: 'pointer' }}>
+                <TableRow key={s.id} hover onClick={() => setDetailId(s.id)} sx={[{ cursor: 'pointer' }, s.gone && goneRowSx]}>
                   {columns.map(col => (
                     <TableCell key={col.id} sx={stickySx(col, stickyLeft[col.id], false)}
                       title={col.id === 'name' ? s.name : undefined}>
@@ -208,7 +211,7 @@ const SpecimensTable: React.FC = () => {
         onConfirm={async () => {
           await deleteSpecimen(toDelete!.id);
           // Its page and photos stay on the public site (photos broken) until the next publish
-          if (toDelete!.published) setNotice(`“${toDelete!.name}” was deleted. Publish again to remove it from the public site.`);
+          if (toDelete!.published && !toDelete!.gone) setNotice(`“${toDelete!.name}” was deleted. Publish again to remove it from the public site.`);
           setToDelete(null);
           setDetailId(null);
           load();

@@ -112,7 +112,8 @@ Unknown specimens are the main use case. The owner records measurements and obse
     - `acquired_year` / `acquired_month` / `acquired_day`: partial dates are allowed, but a full date must exist
     - `price` + `currency`: the currency defaults to PLN when a price is given
   - **Text:** `tags` (`VARCHAR[]`, trimmed, with case-insensitive duplicates removed), `description` (public) and `private_notes` (never exported).
-  - **Admin:** `published` (shown on the public site; **defaults to true** when a request leaves it out, and the form's switch starts on), `created_at`, `updated_at`.
+  - **Admin:** `published` (shown on the public site; **defaults to true** when a request leaves it out, and the form's switch starts on), `gone` (V7: no longer in the owner's collection, e.g. given away or sold; defaults to false), `created_at`, `updated_at`.
+  - **Gone specimens** keep their number and data, are greyed out in the table with a "Gone" chip, and are **never published, whatever `published` says**. Their `published` value is kept (not switched off), so unmarking one restores it as it was. The owner is told to mark stones gone rather than delete them, so public numbers are never reused; deleting is for mistakes.
 - **`material`:** a scientific identity, entered once and shared by every specimen made of it.
   - `name`: the scientific name, unique ignoring case
   - `category`: the "type" (MINERAL, ROCK, ORGANIC, MAN_MADE)
@@ -122,7 +123,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
 - **`specimen_component`:** links a specimen to the materials it consists of, each with a `role` (HOST, INCLUSION, ASSOCIATED, MATRIX), a `certainty` (CONFIRMED, TENTATIVE, SELLER_CLAIM) and a `position`. A specimen with no components counts as **"unidentified"**.
 - **`specimen_photo`** (`photo/SpecimenPhoto`): `file_name` (path in the Pages repo, unique, e.g. `photos/142/142-3f9a1c2e.jpg`), `caption`, `position` (0 = cover) and the published `width` / `height`. It refers to the specimen by a plain `specimen_id` column; the `Specimen` entity has no photo collection.
 - **`specimen_thumbnail`** (`photo/SpecimenThumbnail`): one 192px square JPEG per specimen (`bytea`) plus `updated_at`, in its own table so specimen queries never load image bytes. It's made from the cover photo.
-- V1–V3 are the old rock/group schema, and V4 drops it. V5 adds the photo details (thumbnail `updated_at`, photo `width` / `height`, unique `file_name`). V6 adds `publish_settings`. Never edit a migration that has run anywhere; always add `V{n+1}__*.sql`. (V4 was still edited on Day 7, because it hadn't run anywhere yet.)
+- V1–V3 are the old rock/group schema, and V4 drops it. V5 adds the photo details (thumbnail `updated_at`, photo `width` / `height`, unique `file_name`). V6 adds `publish_settings`, V7 the `gone` flag. Never edit a migration that has run anywhere; always add `V{n+1}__*.sql`. (V4 was still edited on Day 7, because it hadn't run anywhere yet.)
 - **`publish_settings`** (`publish/PublishSettings`): exactly one row (id 1), created with the defaults on first use: `fields` (`VARCHAR[]` of `PublishField` names), `intro` (front-page text), `last_published_at`, `last_commit`.
 - **`special_properties` / `optical_effects` hold enum names as text.** Read them through `Specimen.specialPropertyValues()` / `opticalEffectValues()`, which skip a name the enum no longer has, so renaming or removing a value can't break the detail view or publishing.
 - **Type and family in the table** come from the specimen's primary component (`Specimen.primaryComponent()`: the first HOST component, otherwise the first component). With no components, both show as unknown.
@@ -174,8 +175,8 @@ Unknown specimens are the main use case. The owner records measurements and obse
 | PUT | `/api/specimens/{id}/photos/order` | Body: every photo id once, in the new order; the first becomes the cover. |
 | DELETE | `/api/specimens/{id}/photos/{photoId}` | 204; the next photo becomes the cover if needed |
 | GET | `/api/specimens/{id}/thumbnail?v=…` | The JPEG thumbnail, 404 if none. With `v` (the summary's `thumbnailVersion`) it's cached as immutable. |
-| GET / PUT | `/api/publish/settings` | `{fields: [{key, label, group, included}], intro, lastPublishedAt, siteUrl, publicCount, totalCount, gitHubConfigured}`. PUT takes `{fields: [keys], intro}`; an unknown key is a 400. |
-| POST | `/api/publish/all-specimens` | Marks every specimen public; returns the settings |
+| GET / PUT | `/api/publish/settings` | `{fields: [{key, label, group, included}], intro, lastPublishedAt, siteUrl, publicCount, goneCount, totalCount, gitHubConfigured}`. `publicCount` counts specimens that will actually be published (public and not gone). PUT takes `{fields: [keys], intro}`; an unknown key is a 400. |
+| POST | `/api/publish/all-specimens` | Marks every specimen public (gone ones still aren't published); returns the settings |
 | POST | `/api/publish` | Regenerates and commits the site: `{changed, specimenCount, siteUrl, publishedAt}`. `changed` is false when the site was already up to date. 503 without GitHub. |
 | GET/POST/PUT/DELETE | `/api/materials[/{id}]` | Returns 409 on a duplicate name, or when deleting a material that's still in use |
 
@@ -196,6 +197,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
   - Typing a material that isn't on the list offers "Add … as a new material", which opens `AddMaterialDialog` pre-filled.
   - **"Add & next"** saves the specimen and resets the form for the next one. It keeps the source, where-I-got-it, date, currency and tags, for batch entry.
   - PUT replaces every field, so the form always sends the full request.
+  - Below the sections: "Show on the public site" and "No longer in my collection". While the second is on, the first shows as off and is disabled (its value is kept).
 - **Photos:**
   - The Photo column shows the thumbnail (`thumbnailVersion` in the summary; `null` means no photo). Clicking it opens `PhotoGallery` directly, not the details.
   - `PhotoGallery` is the shared viewer: arrows, mobile-style dots (the current one is a wider pill), a counter, left/right keys and swipe, wrapping around. It's always near-black, whatever the colour scheme.
@@ -220,6 +222,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
   - the buttons "Add a specimen", "Add & next", "Delete {name}" and "Publish"; the dialog "Publish the public site" with the regions "Specimens on the site" and "Fields to publish" (a group per section), "Show all specimens" and the intro textbox
   - the dialogs "Add a specimen", "Edit #{id}", "#{id} {name}" and "Add a material"
   - the detail sections, which are regions named after their titles (including "Photos")
+  - the form switches labelled "Show on the public site" and "No longer in my collection", and the table's "Gone" chip
   - the photo controls: "Photos of {name}" (table photo), the dialog "{name} photos", "Previous photo" / "Next photo", "Photo n" (dots, `aria-current` on the shown one), "Close gallery", "Open photo n", "Make photo n the cover", "Delete photo n", the dialog "Delete this photo?", "Choose photos" and the file inputs labelled "Photo files"
 - `test/photos.spec.ts` and `test/publish.spec.ts` **mock every photo and publish endpoint (and image URL) with `page.route`**, because a real upload or publish commits to the public Pages repo (and saving publish settings would overwrite the owner's). Keep it that way; test real uploads by hand and delete the test specimen afterwards, which removes its files.
 - The specs import `test` / `expect` from `test/fixtures.ts`, whose `request` fixture adds the `X-Rock-Collection` header to the tests' **direct** API calls only; pages must send it themselves, so a page that forgets it still fails.
@@ -250,6 +253,18 @@ corepack yarn test:e2e test/api.spec.ts
 ```
 
 The Playwright tests use `FRONTEND_URL` (default `http://localhost:3000`) and `API_BASE_URL` (default `http://localhost:8080/api`).
+
+**Don't run the e2e tests against the owner's real database** (the default `docker compose` stack once seeding has started): they create and delete specimens, which uses up public specimen numbers. Use a throwaway stack instead, without a GitHub token (deleting a specimen removes `photos/{id}/` from the real Pages repo):
+
+```sh
+docker run -d --rm --name rocktest-db -e POSTGRES_DB=rockdb -e POSTGRES_USER=rockuser -e POSTGRES_PASSWORD=rockpass -p 5433:5432 postgres:18
+# backend (rock-collection-backend/)
+GITHUB_TOKEN= SERVER_PORT=8081 SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/rockdb CORS_ALLOWED_ORIGINS=http://localhost:3001 ./mvnw spring-boot:run
+# frontend (rock-collection-frontend/)
+NEXT_PUBLIC_API_URL=http://localhost:8081 corepack yarn dev -p 3001
+FRONTEND_URL=http://localhost:3001 API_BASE_URL=http://localhost:8081/api corepack yarn test:e2e
+docker stop rocktest-db
+```
 
 ## Dev machine notes (owner's Windows PC)
 

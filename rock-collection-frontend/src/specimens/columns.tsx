@@ -55,7 +55,11 @@ export const COLUMNS: ColumnDef[] = [
       : <Box component="img" src={thumbnailUrl(s.id, s.thumbnailVersion)} alt="" width={THUMBNAIL_SIZE} height={THUMBNAIL_SIZE}
           sx={{ display: 'block', borderRadius: 2, objectFit: 'cover' }} />,
   },
-  { id: 'name', label: 'Name', sortKey: 'name', defaultVisible: true, sticky: true, width: 220, render: s => s.name },
+  {
+    id: 'name', label: 'Name', sortKey: 'name', defaultVisible: true, sticky: true, width: 220,
+    // The chip goes first, so a long, cut-off name can't hide it
+    render: s => s.gone ? <><Chip size="small" variant="outlined" label="Gone" sx={{ mr: 1 }} />{s.name}</> : s.name,
+  },
   { id: 'marketName', label: 'Market name', sortKey: 'marketName', defaultVisible: true, render: s => orUnknown(s.marketName) },
   { id: 'materials', label: 'Scientific identity', defaultVisible: false, render: s => <ComponentChips components={s.components} /> },
   { id: 'type', label: 'Type', defaultVisible: true, render: s => orUnknown(s.type && MATERIAL_CATEGORY_LABELS[s.type]) },
@@ -74,7 +78,7 @@ export const COLUMNS: ColumnDef[] = [
       <Stack direction="row" sx={{ gap: 0.5, flexWrap: 'wrap' }}>{s.tags.map(t => <Chip key={t} size="small" label={t} />)}</Stack>
     ),
   },
-  { id: 'published', label: 'Public', defaultVisible: false, render: s => (s.published ? 'Yes' : 'No') },
+  { id: 'published', label: 'Public', defaultVisible: false, render: s => (s.gone ? 'No (gone)' : s.published ? 'Yes' : 'No') },
 ];
 
 const STORAGE_KEY = 'specimenTable.visibleColumns';

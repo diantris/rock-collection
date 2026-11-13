@@ -77,5 +77,6 @@ test('Other web sites can neither change nor read data through the browser', asy
     headers: { Origin: origin, 'Access-Control-Request-Method': 'DELETE', 'Access-Control-Request-Headers': 'x-rock-collection' },
   });
   expect((await preflight('https://evil.example')).headers()['access-control-allow-origin']).toBeUndefined();
-  expect((await preflight('http://localhost:3000')).headers()['access-control-allow-origin']).toBe('http://localhost:3000');
+  const app = new URL(process.env.FRONTEND_URL || 'http://localhost:3000').origin;
+  expect((await preflight(app)).headers()['access-control-allow-origin']).toBe(app);
 });

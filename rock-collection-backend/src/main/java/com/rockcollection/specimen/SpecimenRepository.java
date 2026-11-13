@@ -12,10 +12,13 @@ public interface SpecimenRepository extends JpaRepository<Specimen, Long> {
     @Query(value = "SELECT DISTINCT t FROM specimen, unnest(tags) AS t ORDER BY t", nativeQuery = true)
     List<String> findAllTags();
 
-    /** The specimens that appear on the public site, by number. */
-    List<Specimen> findByPublishedTrueOrderByIdAsc();
+    /** The specimens that appear on the public site, by number: marked public and still in the collection. */
+    List<Specimen> findByPublishedTrueAndGoneFalseOrderByIdAsc();
 
-    long countByPublishedTrue();
+    long countByPublishedTrueAndGoneFalse();
+
+    /** Specimens no longer in the collection (never published). */
+    long countByGoneTrue();
 
     /** Shows every specimen on the public site; returns how many changed. */
     @Modifying

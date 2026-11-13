@@ -11,10 +11,10 @@ const FIELDS: Field[] = [
   { key: 'PRICE', label: 'Price', group: 'Origin & acquisition', included: false },
 ];
 
-async function mockPublishApi(page: Page, overrides: Partial<{ publicCount: number; gitHubConfigured: boolean; changed: boolean }> = {}) {
+async function mockPublishApi(page: Page, overrides: Partial<{ publicCount: number; goneCount: number; gitHubConfigured: boolean; changed: boolean }> = {}) {
   const state = {
     fields: FIELDS.map(f => ({ ...f })), intro: 'Hello experts.', lastPublishedAt: null as string | null,
-    siteUrl: 'https://owner.github.io/pages/', publicCount: overrides.publicCount ?? 3, totalCount: 3,
+    siteUrl: 'https://owner.github.io/pages/', publicCount: overrides.publicCount ?? 3, goneCount: overrides.goneCount ?? 0, totalCount: 3,
     gitHubConfigured: overrides.gitHubConfigured ?? true,
   };
   const calls = { saved: [] as { fields: string[]; intro: string }[], published: 0, showAll: 0 };
@@ -29,7 +29,7 @@ async function mockPublishApi(page: Page, overrides: Partial<{ publicCount: numb
   });
   await page.route('**/api/publish/all-specimens', async route => {
     calls.showAll++;
-    state.publicCount = state.totalCount;
+    state.publicCount = state.totalCount - state.goneCount; // gone stones are never published
     await route.fulfill({ json: state });
   });
   await page.route('**/api/publish', async route => {
@@ -76,6 +76,16 @@ test('Publish dialog can show every specimen at once', async ({ page }) => {
   await expect(dialog.getByText('3 of 3 specimens are shown on the site.')).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Show all specimens' })).toHaveCount(0);
   expect(calls.showAll).toBe(1);
+});
+
+test('Publish dialog counts stones no longer in the collection apart', async ({ page }) => {
+  await mockPublishApi(page, { publicCount: 2, goneCount: 1 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Publish', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Publish the public site' });
+
+  await expect(dialog.getByText('2 of 3 specimens are shown on the site (1 no longer in the collection).')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Show all specimens' })).toHaveCount(0); // nothing more to show
 });
 
 test('Publish dialog explains a missing GitHub token and an unchanged site', async ({ page }) => {
