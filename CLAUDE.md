@@ -55,7 +55,9 @@ Keep data entry **low-friction**: sensible defaults, few required fields, no lon
 - **Provenance:** where or from whom it was acquired, the **seller's name** for it (kept separately from the actual identity), locality, and acquisition date.
 - **Almost every field is optional.** The UI, API and export must handle missing data gracefully: show "unknown", don't fail validation, and don't drop rows.
 
-## Current state (as of Day 8)
+## Current state (as of Day 12)
+
+**The collection is seeded:** 363 specimens (#1–#363) were bulk-imported from the owner's photo folders on Day 11, with all 727 photos uploaded. Every component from that import is a TENTATIVE guess made from the folder name, and the owner is refining them in the app. Treat this local DB as the owner's real data (see Commands).
 
 **Already built:**
 - the specimen data model (roadmap step 1)
@@ -64,6 +66,7 @@ Keep data entry **low-friction**: sensible defaults, few required fields, no lon
 - the full add/edit form, the detail view and the Material You theme (roadmap step 2)
 - the photo pipeline (roadmap step 3): upload, resize, EXIF/GPS stripping, push to the Pages repo, DB thumbnails, the gallery
 - the public site (roadmap step 4): the Publish dialog with the global field checkboxes, and the generated static site
+- the "no longer in my collection" (`gone`) flag, and the material type/family rework (Day 11)
 
 **Not built yet:**
 - photo captions in the UI (the column exists, nothing edits it)
@@ -79,7 +82,7 @@ Keep data entry **low-friction**: sensible defaults, few required fields, no lon
 
 ## Architecture
 
-Monorepo with three Docker Compose services (`docker-compose.yml`):
+Monorepo with three Docker Compose services (`docker-compose.yml`), plus `scripts/`: hand-run helper scripts that aren't part of the app (the Day 11 bulk import and the resumable photo upload). They're kept for reuse and for possible write-ups, and are described in `scripts/README.md`. Put new one-off or helper scripts there too, rather than leaving them in a scratch folder.
 
 | Service    | Dir                         | Stack                                                                 | Port |
 |------------|-----------------------------|-----------------------------------------------------------------------|------|
@@ -231,7 +234,10 @@ Unknown specimens are the main use case. The owner records measurements and obse
 
 ```sh
 # Everything in Docker (needs Docker Desktop running)
-docker compose up --build
+docker compose up --build         # broken on the owner's PC since Day 11, see Known issues; there use:
+docker build -t rock-collection-api ./rock-collection-backend
+docker build -t rock-collection-frontend --build-arg NEXT_PUBLIC_API_URL=http://localhost:8080 ./rock-collection-frontend
+docker compose up -d --no-build
 docker compose up db api          # then run the frontend locally
 docker compose up db              # then run backend + frontend locally
 docker compose down -v            # also wipe the DB volume
@@ -279,6 +285,7 @@ docker stop rocktest-db
 - **`next.config.ts` lists `@material/material-color-utilities` in `transpilePackages`.** Version 0.4.0 has an ESM import without a file extension that Node can't resolve during SSR, which made `next build` fail inside Docker. Remove the workaround once upstream fixes it.
 - **The API image is tuned for the 1 GB / quarter-CPU GCP VM** (`JAVA_TOOL_OPTIONS` and `MALLOC_ARENA_MAX` in `rock-collection-backend/Dockerfile`; Tomcat threads, Hikari pool and compression in `application.properties`). Measured under those limits: ~210 MB idle, levelling off at ~560 MB under repeated large uploads, ~25 s startup. Keep `-Djdk.nio.maxCachedBufferSize`: without it the JDK keeps a per-thread off-heap buffer as large as the biggest upload read, and memory grew without end.
 - **Check the exit code of `docker compose build`.** A failed image build leaves the old container running, so tests silently run against stale code.
+- **`docker compose up --build` / `docker compose build` fail on the owner's PC** (Docker Compose v5.6, buildx 0.37, since Day 11). Compose now builds through buildx "bake", which stops with `additional privileges requested: pass "--allow=fs.read=rock-collection-frontend\\Dockerfile"`, a Windows path problem. `COMPOSE_BAKE=false` no longer turns bake off. Build both images with plain `docker build`, tagged with the names Compose uses (`rock-collection-api`, `rock-collection-frontend`, see Commands), then start them with `docker compose up -d --no-build`. The frontend needs `--build-arg NEXT_PUBLIC_API_URL=…`, because the compose file normally passes it. Try `docker compose up --build` again after Docker updates.
 - **MUI `Dialog` only forwards `aria-labelledby` to the paper** (the element with `role="dialog"`). An `aria-label` on `<Dialog>` lands on the backdrop root, so pass it through `slotProps.paper` (as `PhotoGallery` does).
 - **While a dialog is open (or fading out), the rest of the page is `aria-hidden`.** Role queries outside it find nothing, so wait for the dialog to be gone, or use CSS locators.
 - **GitHub's API caches unauthenticated reads for about a minute.** A `contents/` lookup can still show a just-deleted file; check the tree of the latest commit instead.
