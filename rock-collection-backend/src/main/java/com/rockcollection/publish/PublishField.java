@@ -10,12 +10,15 @@ public enum PublishField {
     MARKET_NAME("Market name (what it was sold as)", Group.IDENTITY, true),
     IDENTITY("Scientific identity (materials)", Group.IDENTITY, true),
     FORM("Form", Group.IDENTITY, true),
-    NATURE("Nature (natural, treated…)", Group.IDENTITY, true),
+    NATURE("Nature (natural rock, treated mineral…)", Group.IDENTITY, true),
     TREATMENT("Treatment notes", Group.IDENTITY, true),
-    INCLUSIONS("Unidentified inclusions", Group.IDENTITY, true),
+    INCLUSIONS("Unidentified components", Group.IDENTITY, true),
+
+    WEIGHT("Weight", Group.SIZE, true),
+    SIZE("Size", Group.SIZE, true),
 
     COLOR("Colour", Group.APPEARANCE, true),
-    LUSTER("Luster", Group.APPEARANCE, true),
+    LUSTER("Lustre", Group.APPEARANCE, true),
     TRANSPARENCY("Transparency", Group.APPEARANCE, true),
     OPTICAL_EFFECTS("Optical effects", Group.APPEARANCE, true),
 
@@ -28,9 +31,6 @@ public enum PublishField {
     SPECIAL_PROPERTIES("Special properties", Group.PHYSICAL, true),
     OTHER_OBSERVATIONS("Other observations", Group.PHYSICAL, true),
 
-    WEIGHT("Weight", Group.SIZE, true),
-    SIZE("Size", Group.SIZE, true),
-
     LOCALITY("Locality (where it was mined)", Group.ORIGIN, true),
     ACQUISITION_TYPE("Source (bought, found…)", Group.ORIGIN, false),
     ACQUIRED_FROM("Where I got it", Group.ORIGIN, false),
@@ -42,7 +42,7 @@ public enum PublishField {
 
     /** Headings the checkboxes are grouped under; they match the sections of a specimen page. */
     public enum Group {
-        IDENTITY("What it is"), APPEARANCE("Appearance"), PHYSICAL("Physical properties"), SIZE("Size & weight"),
+        IDENTITY("What it is"), SIZE("Size & weight"), APPEARANCE("Appearance"), PHYSICAL("Physical properties"),
         ORIGIN("Origin & acquisition"), NOTES("Notes");
 
         private final String label;

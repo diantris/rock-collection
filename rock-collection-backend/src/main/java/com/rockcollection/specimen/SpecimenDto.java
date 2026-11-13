@@ -35,12 +35,12 @@ public final class SpecimenDto {
     }
 
     /**
-     * Row in the paginated specimen table. {@code type} and {@code family} come from the primary component
-     * (first HOST, else first component) and are null for unidentified specimens.
+     * Row in the paginated specimen table. {@code family} comes from the primary component
+     * (first HOST, else first component) and is null for unidentified specimens; the table's type comes from {@code nature}.
      */
     public record Summary(
             Long id, String name, String marketName, List<Component> components,
-            MaterialCategory type, MaterialFamily family,
+            MaterialFamily family,
             SpecimenForm form, SpecimenNature nature, String country,
             AcquisitionType acquisitionType, String acquiredFrom, String acquiredCountry, Integer acquiredYear,
             BigDecimal price, String currency, List<String> tags, boolean published, boolean gone, Long thumbnailVersion) {
@@ -49,7 +49,6 @@ public final class SpecimenDto {
             SpecimenComponent primary = s.primaryComponent();
             return new Summary(s.getId(), s.getName(), s.getMarketName(),
                     s.getComponents().stream().map(Component::from).toList(),
-                    primary != null ? primary.getMaterial().getCategory() : null,
                     primary != null ? primary.getMaterial().getFamily() : null,
                     s.getForm(), s.getNature(), s.getCountry(),
                     s.getAcquisitionType(), s.getAcquiredFrom(), s.getAcquiredCountry(), s.getAcquiredYear(),

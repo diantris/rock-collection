@@ -1,8 +1,8 @@
-// CrystalSystem.java - Crystal system of a mineral
+// CrystalSystem.java - Crystal system of a material
 package com.rockcollection.material;
 
 /**
- * Crystal system of a mineral
+ * Crystal system of a material; unknown or not applicable is null
  */
 public enum CrystalSystem {
     CUBIC, // isometric
@@ -12,5 +12,5 @@ public enum CrystalSystem {
     TRIGONAL,
     MONOCLINIC,
     TRICLINIC,
-    AMORPHOUS // no crystal structure, e.g. opal, obsidian
+    AMORPHOUS // no crystal structure, e.g. opal, volcanic glass (always the case for mineraloids)
 }

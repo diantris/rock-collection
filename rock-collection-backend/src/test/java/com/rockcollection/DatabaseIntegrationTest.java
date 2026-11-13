@@ -64,13 +64,21 @@ class DatabaseIntegrationTest {
             assertThat(m.mineralGroup()).isEqualTo("Pyroxene");
             assertThat(m.crystalSystem()).hasToString("MONOCLINIC");
         });
-        assertThat(byName.get("Rhyolite").family()).hasToString("IGNEOUS");
+        // Materials are never rocks (V8): rocks are specimens made of materials
+        assertThat(byName).doesNotContainKeys("Rhyolite", "Jasper", "Goldstone", "Nephrite", "Pearl");
+        assertThat(byName.get("Opal")).satisfies(m -> {
+            assertThat(m.category()).hasToString("MINERALOID");
+            assertThat(m.family()).hasToString("AMORPHOUS_SILICA");
+        });
+        assertThat(byName.get("Orthoclase").mineralGroup()).isEqualTo("Feldspar");
+        assertThat(byName.get("Nacre").family()).hasToString("BIOMINERAL");
+        assertThat(byName.values()).allSatisfy(m -> assertThat(m.family() == null || m.family().category() == m.category()).isTrue());
     }
 
     @Test
     void specimenWithEveryKindOfFieldRoundTrips() {
         SpecimenDto.Request request = JsonMapper.builder().build().readValue("""
-                {"name": "Scrap-bin find", "marketName": "Unknown green", "form": "ROUGH",
+                {"name": "Scrap-bin find", "marketName": "Unknown green", "form": "ROUGH", "nature": "NATURAL_ROCK",
                  "components": [{"materialId": %d, "role": "HOST"}, {"materialId": %d, "role": "ASSOCIATED"}],
                  "color": "green", "secondaryColor": "purple", "hardnessMin": 6, "hardnessMax": 6.5,
                  "specificGravity": 2.55, "weightG": 41.3, "lengthMm": 42.5,
@@ -78,7 +86,7 @@ class DatabaseIntegrationTest {
                  "acquisitionType": "BOUGHT", "acquiredFrom": "Mineral fair, Kraków", "acquiredCountry": "Poland",
                  "acquiredYear": 2024, "acquiredMonth": 5, "price": 1,
                  "tags": ["combo", "weird"], "privateNotes": "1 PLN from the scrap box"}
-                """.formatted(materialId("Rhyolite"), materialId("Amethyst")), SpecimenDto.Request.class);
+                """.formatted(materialId("Orthoclase"), materialId("Amethyst")), SpecimenDto.Request.class);
 
         SpecimenDto.Detail created = specimenService.create(request);
         SpecimenDto.Detail fetched = specimenService.findById(created.id());
@@ -90,13 +98,13 @@ class DatabaseIntegrationTest {
         assertThat(fetched.tags()).containsExactly("combo", "weird");
         assertThat(fetched.currency()).isEqualTo("PLN");
         assertThat(fetched.createdAt()).isNotNull();
-        assertThat(fetched.components()).extracting(SpecimenDto.Component::materialName).containsExactly("Rhyolite", "Amethyst");
+        assertThat(fetched.components()).extracting(SpecimenDto.Component::materialName).containsExactly("Orthoclase", "Amethyst");
         assertThat(specimenService.findAllTags()).contains("combo", "weird");
 
         PageResponse<SpecimenDto.Summary> page = specimenService.findPage(0, 25, "acquiredFrom", Sort.Direction.ASC);
         SpecimenDto.Summary summary = page.content().stream().filter(s -> s.id().equals(created.id())).findFirst().orElseThrow();
-        assertThat(summary.type()).hasToString("ROCK");
-        assertThat(summary.family()).hasToString("IGNEOUS");
+        assertThat(summary.nature()).hasToString("NATURAL_ROCK");
+        assertThat(summary.family()).hasToString("SILICATE");
 
         // Materials in use can't be deleted; once the specimen is gone, they can
         assertThatThrownBy(() -> materialService.delete(materialId("Amethyst"))).isInstanceOf(ConflictException.class);

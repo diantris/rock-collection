@@ -97,13 +97,13 @@ Monorepo with three Docker Compose services (`docker-compose.yml`):
 Unknown specimens are the main use case. The owner records measurements and observations, and experts use them to work out what the specimen is.
 
 - **`specimen`:** one physical item. Only `name` is required.
-  - **What it is:** `market_name`, `form` (ROUGH, CRYSTAL, TUMBLED, CABOCHON, SPHERE, POINT, FACETED, CARVED, SLAB, BEAD, JEWELRY, OTHER), `nature` (NATURAL, TREATED, SYNTHETIC, MAN_MADE, UNKNOWN) and `treatment_notes`.
+  - **What it is:** `market_name`, `form` (ROUGH, CRYSTAL, TUMBLED, CABOCHON, SPHERE, POINT, FACETED, CARVED, SLAB, BEAD, JEWELRY, OTHER), `nature` and `treatment_notes`. **Nature** says what kind of thing the piece is and whether it's natural: NATURAL_ / TREATED_ × MINERAL, ROCK, ORGANIC, MINERALOID, plus SYNTHETIC (lab-grown, has a natural counterpart), ARTIFICIAL (no counterpart, e.g. goldstone glass) and UNKNOWN. **"Rock" exists only here**: a rock is a specimen made of several materials.
   - **Observed or measured on this piece:** these are the evidence used to identify it, so they stay per specimen even when the material is known.
     - `color` and `secondary_color`; luster, transparency and streak (free text; the full form in step 2 should offer suggestions); cleavage and fracture (two separate fields); crystal habit
     - `hardness_min` / `hardness_max` in Mohs. A single value fills both; a reversed range is swapped.
     - `specific_gravity`
     - `special_properties` and `optical_effects`: `VARCHAR[]` arrays of enum names (`SpecialProperty`, `OpticalEffect`), mapped as `List<String>` with `@JdbcTypeCode(SqlTypes.ARRAY)`
-    - `inclusions`: free text, for inclusions not yet identified. Identified ones are components.
+    - `inclusions`: free text labelled **"Unidentified components"**: anything not yet identified, inside, alongside or in the matrix. Identified ones become components.
     - `weight_g`, `length_mm` / `width_mm` / `height_mm`, other observations
   - **Provenance:**
     - `locality` + `country`: where it was (likely) mined
@@ -114,19 +114,19 @@ Unknown specimens are the main use case. The owner records measurements and obse
   - **Text:** `tags` (`VARCHAR[]`, trimmed, with case-insensitive duplicates removed), `description` (public) and `private_notes` (never exported).
   - **Admin:** `published` (shown on the public site; **defaults to true** when a request leaves it out, and the form's switch starts on), `gone` (V7: no longer in the owner's collection, e.g. given away or sold; defaults to false), `created_at`, `updated_at`.
   - **Gone specimens** keep their number and data, are greyed out in the table with a "Gone" chip, and are **never published, whatever `published` says**. Their `published` value is kept (not switched off), so unmarking one restores it as it was. The owner is told to mark stones gone rather than delete them, so public numbers are never reused; deleting is for mistakes.
-- **`material`:** a scientific identity, entered once and shared by every specimen made of it.
+- **`material`:** a component specimens are made of, entered once and shared by every specimen made of it. **Materials are never rocks** and must make scientific sense (unakite = epidote + quartz + orthoclase; goldstone = glass + copper; obsidian = volcanic glass).
   - `name`: the scientific name, unique ignoring case
-  - `category`: the "type" (MINERAL, ROCK, ORGANIC, MAN_MADE)
-  - `family`: `MaterialFamily`, a chemical class (silicate, carbonate, …) or rock class (igneous, sedimentary, metamorphic)
-  - `mineral_group` (free text), `crystal_system`, `formula`, `mindat_url`, and `description` (e.g. mindat's definition)
-  - About 65 common materials are seeded. Only well-established classifications are filled in; anything uncertain is left NULL.
-- **`specimen_component`:** links a specimen to the materials it consists of, each with a `role` (HOST, INCLUSION, ASSOCIATED, MATRIX), a `certainty` (CONFIRMED, TENTATIVE, SELLER_CLAIM) and a `position`. A specimen with no components counts as **"unidentified"**.
+  - `category`: the "type" (MINERAL, MINERALOID, ORGANIC, MAN_MADE)
+  - `family`: `MaterialFamily`; each family belongs to one type (`MaterialFamily.category()`, mirrored by `FAMILIES_BY_CATEGORY` in `types.ts`) and a mismatch is a 400. Mineral families follow the Strunz classes (vanadates with phosphates, tungstates with sulfates); mineraloid: volcanic glass, impact glass, amorphous silica, amorphous oxides/hydroxides (limonite, psilomelane); organic: fossil resins/hydrocarbons, biominerals, organic tissue, fauna/flora inclusions; man-made: glass, metals/alloys, polymers/resins, man-made crystals.
+  - `mineral_group` (free text, e.g. Feldspar for orthoclase), `crystal_system` (AMORPHOUS = no crystal structure, pre-filled for mineraloids; empty = unknown or not applicable), `formula`, `mindat_url`, and `description` (e.g. mindat's definition)
+  - About 100 common materials are seeded (V4, V8 adds the components of the owner's stones). Only well-established classifications are filled in; anything uncertain is left NULL.
+- **`specimen_component`:** links a specimen to the materials it consists of, each with a `role` (HOST; INCLUSION, inside the host; ASSOCIATED, grows alongside it; MATRIX, shown as "Matrix component": part of the rock it sits on, which itself only appears in the specimen's name), a `certainty` (CONFIRMED, TENTATIVE, SELLER_CLAIM) and a `position`. A specimen with no components counts as **"unidentified"**.
 - **`specimen_photo`** (`photo/SpecimenPhoto`): `file_name` (path in the Pages repo, unique, e.g. `photos/142/142-3f9a1c2e.jpg`), `caption`, `position` (0 = cover) and the published `width` / `height`. It refers to the specimen by a plain `specimen_id` column; the `Specimen` entity has no photo collection.
 - **`specimen_thumbnail`** (`photo/SpecimenThumbnail`): one 192px square JPEG per specimen (`bytea`) plus `updated_at`, in its own table so specimen queries never load image bytes. It's made from the cover photo.
-- V1–V3 are the old rock/group schema, and V4 drops it. V5 adds the photo details (thumbnail `updated_at`, photo `width` / `height`, unique `file_name`). V6 adds `publish_settings`, V7 the `gone` flag. Never edit a migration that has run anywhere; always add `V{n+1}__*.sql`. (V4 was still edited on Day 7, because it hadn't run anywhere yet.)
+- V1–V3 are the old rock/group schema, and V4 drops it. V5 adds the photo details (thumbnail `updated_at`, photo `width` / `height`, unique `file_name`). V6 adds `publish_settings`, V7 the `gone` flag, V8 the material types/families and nature values above (removing the rock materials). Never edit a migration that has run anywhere; always add `V{n+1}__*.sql`. (V4 was still edited on Day 7, because it hadn't run anywhere yet.)
 - **`publish_settings`** (`publish/PublishSettings`): exactly one row (id 1), created with the defaults on first use: `fields` (`VARCHAR[]` of `PublishField` names), `intro` (front-page text), `last_published_at`, `last_commit`.
 - **`special_properties` / `optical_effects` hold enum names as text.** Read them through `Specimen.specialPropertyValues()` / `opticalEffectValues()`, which skip a name the enum no longer has, so renaming or removing a value can't break the detail view or publishing.
-- **Type and family in the table** come from the specimen's primary component (`Specimen.primaryComponent()`: the first HOST component, otherwise the first component). With no components, both show as unknown.
+- **Type in the table comes from the specimen's nature** (`NATURE_TYPE_LABELS`: Mineral, Rock, Organic, Mineraloid, Synthetic, Artificial), since materials can't say "rock". **Family** comes from the primary component (`Specimen.primaryComponent()`: the first HOST component, otherwise the first component); with no components it shows as unknown.
 
 ### Backend (`com.rockcollection`, feature packages)
 
@@ -142,7 +142,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
 - `publish/` holds the public site:
   - `PublishField`: the global checkboxes, each with a label, a group (the specimen page's section) and a default. The defaults are the identification evidence; source, where-I-got-it, date, price and tags start unticked. Number, name and photos are always published; **private notes aren't a field at all, so they can never be published**.
   - `SiteGenerator`: JMustache templates in `src/main/resources/site/` (`index.mustache`, `specimen.mustache`, the `_head` partial) plus static `site/assets/` (`site.css`, `site.js`, `icon.svg`). The view models only ever contain ticked fields. Mustache escapes HTML; only `http(s)` mindat links become links. Pages use **relative links** (the site lives under `/rock-collection-page/`) and contain **no timestamps**, so unchanged pages are byte-identical and aren't re-committed. Index cards use each cover photo's `-small.jpg` copy. `isGenerated(path)` (everything except `photos/` and `README.md`) is what publishing may replace or delete.
-  - `SiteLabels`: English labels for enum values. **Keep it in sync with the `*_LABELS` maps in `specimens/types.ts`.**
+  - `SiteLabels`: English labels for enum values. **Keep it in sync with the `*_LABELS` maps in `specimens/types.ts`** (the site uses the short role names, `ROLE_SHORT_LABELS`).
   - `site.css` holds the app's M3 palette as fixed values (light and dark). If `SEED_COLOR` changes, copy the new values from the app's `--mui-palette-*` CSS variables.
   - `site.js` adds search, the "Unidentified only" filter and the gallery's arrows, dots and keys. Without JS every card shows and the gallery still swipes (CSS scroll-snap).
   - **Photos open full screen on the page**, never as a link to the bare image file (that left visitors on a raw JPEG with no way back). Clicking a photo or "View photos full screen" fixes the same gallery over the page (`.is-fullscreen`); "Close full screen", Escape and the browser's or phone's Back button close it (opening pushes a history entry). Works for single-photo specimens too.
@@ -261,7 +261,7 @@ docker run -d --rm --name rocktest-db -e POSTGRES_DB=rockdb -e POSTGRES_USER=roc
 # backend (rock-collection-backend/)
 GITHUB_TOKEN= SERVER_PORT=8081 SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/rockdb CORS_ALLOWED_ORIGINS=http://localhost:3001 ./mvnw spring-boot:run
 # frontend (rock-collection-frontend/)
-NEXT_PUBLIC_API_URL=http://localhost:8081 corepack yarn dev -p 3001
+NEXT_PUBLIC_API_URL=http://localhost:8081 corepack yarn build && corepack yarn start -p 3001   # `yarn dev` crashed on this machine (invalid hook call) on Day 11
 FRONTEND_URL=http://localhost:3001 API_BASE_URL=http://localhost:8081/api corepack yarn test:e2e
 docker stop rocktest-db
 ```
@@ -284,6 +284,11 @@ docker stop rocktest-db
 - **GitHub's API caches unauthenticated reads for about a minute.** A `contents/` lookup can still show a just-deleted file; check the tree of the latest commit instead.
 - **Playwright accessible names match substrings** ("Name" also matches "Market name", "Where I got it" also matches "Country (where I got it)"). Use `exact: true` for field labels.
 - `.gitignore` excludes `package-lock.json`. Yarn is the package manager, and `yarn.lock` is committed.
+
+## Wording and order
+
+- **British spelling** in everything people read (app, public site): colour, lustre, jewellery, play of colour. Enum names and field names stay as they are (`color`, `luster`, `JEWELRY`), so only labels change. Chemistry keeps the IUPAC "sulfur" / "sulfide".
+- **Section order** everywhere (form, details, public page, Publish dialog): Scientific identity / What it is, Size & weight, Appearance, Physical properties, Origin & acquisition, Notes.
 
 ## Conventions
 

@@ -140,7 +140,7 @@ class SpecimenServiceTest {
         existing.replaceComponents(List.of(new SpecimenComponent(
                 material(9L, "Calcite", MaterialCategory.MINERAL, MaterialFamily.CARBONATE), ComponentRole.HOST, IdentificationCertainty.CONFIRMED)));
         when(specimenRepository.findById(5L)).thenReturn(Optional.of(existing));
-        when(materialService.get(1L)).thenReturn(material(1L, "Rhyolite", MaterialCategory.ROCK, MaterialFamily.IGNEOUS));
+        when(materialService.get(1L)).thenReturn(material(1L, "Orthoclase", MaterialCategory.MINERAL, MaterialFamily.SILICATE));
         when(materialService.get(2L)).thenReturn(material(2L, "Amethyst", MaterialCategory.MINERAL, MaterialFamily.SILICATE));
         when(specimenRepository.saveAndFlush(existing)).thenReturn(existing);
 
@@ -149,22 +149,21 @@ class SpecimenServiceTest {
                   {"materialId": 1, "role": "HOST"}, {"materialId": 2, "role": "ASSOCIATED"}]}"""));
 
         assertThat(existing.getComponents()).extracting(c -> c.getMaterial().getName(), SpecimenComponent::getPosition)
-                .containsExactly(tuple("Rhyolite", 0), tuple("Amethyst", 1));
+                .containsExactly(tuple("Orthoclase", 0), tuple("Amethyst", 1));
     }
 
     @Test
-    void summary_takesTypeAndFamilyFromFirstHostComponent() {
+    void summary_takesFamilyFromFirstHostComponent() {
         Specimen s = new Specimen();
         s.setName("Dalmatian Stone");
         s.replaceComponents(List.of(
                 new SpecimenComponent(material(1L, "Arfvedsonite", MaterialCategory.MINERAL, MaterialFamily.SILICATE), ComponentRole.ASSOCIATED, IdentificationCertainty.TENTATIVE),
-                new SpecimenComponent(material(2L, "Rhyolite", MaterialCategory.ROCK, MaterialFamily.IGNEOUS), ComponentRole.HOST, IdentificationCertainty.TENTATIVE)));
+                new SpecimenComponent(material(2L, "Volcanic glass", MaterialCategory.MINERALOID, MaterialFamily.VOLCANIC_GLASS), ComponentRole.HOST, IdentificationCertainty.TENTATIVE)));
         Specimen unidentified = new Specimen();
         unidentified.setName("Piasek Pustyni");
 
-        assertThat(SpecimenDto.Summary.from(s, null)).extracting(SpecimenDto.Summary::type, SpecimenDto.Summary::family)
-                .containsExactly(MaterialCategory.ROCK, MaterialFamily.IGNEOUS);
-        assertThat(SpecimenDto.Summary.from(unidentified, null).type()).isNull();
+        assertThat(SpecimenDto.Summary.from(s, null).family()).isEqualTo(MaterialFamily.VOLCANIC_GLASS);
+        assertThat(SpecimenDto.Summary.from(unidentified, null).family()).isNull();
     }
 
     @Test

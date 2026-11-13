@@ -1,9 +1,9 @@
-// AddMaterialDialog.tsx - Dialog for adding a scientific identity (mineral, rock, ...) to the reference list
+// AddMaterialDialog.tsx - Dialog for adding a material (mineral, mineraloid, organic, man-made) to the reference list
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField } from '@mui/material';
 import { createMaterial } from './api';
 import {
-  CRYSTAL_SYSTEM_LABELS, CrystalSystem, FAMILY_LABELS, Material, MATERIAL_CATEGORY_LABELS, MaterialCategory, MaterialFamily,
+  CRYSTAL_SYSTEM_LABELS, CrystalSystem, FAMILIES_BY_CATEGORY, FAMILY_LABELS, Material, MATERIAL_CATEGORY_LABELS, MaterialCategory, MaterialFamily,
 } from './types';
 
 interface Props {
@@ -37,6 +37,13 @@ const AddMaterialDialog: React.FC<Props> = ({ open, initialName = '', onClose, o
   const set = <K extends keyof typeof emptyForm>(field: K, value: (typeof emptyForm)[K]) =>
     setForm(prev => ({ ...prev, [field]: value }));
 
+  /** Only the new type's families fit; mineraloids never have a crystal structure, so they start as amorphous. */
+  const setCategory = (category: MaterialCategory) => setForm(prev => ({
+    ...prev, category,
+    family: prev.family && FAMILIES_BY_CATEGORY[category].includes(prev.family) ? prev.family : '',
+    crystalSystem: category === 'MINERALOID' && !prev.crystalSystem ? 'AMORPHOUS' : prev.crystalSystem,
+  }));
+
   const handleSave = async () => {
     setSaving(true);
     setError(null);
@@ -55,15 +62,15 @@ const AddMaterialDialog: React.FC<Props> = ({ open, initialName = '', onClose, o
       <DialogContent>
         <Stack sx={{ gap: 2, pt: 1 }}>
           <TextField label="Scientific name" required autoFocus value={form.name} onChange={e => set('name', e.target.value)}
-            helperText="e.g. Kosmochlor, Rhyolite" />
+            helperText="e.g. Kosmochlor, Orthoclase. Never a rock: a rock is a specimen made of materials" />
           <Stack direction="row" sx={{ gap: 2 }}>
-            <TextField select fullWidth label="Type" value={form.category} onChange={e => set('category', e.target.value as MaterialCategory)}>
+            <TextField select fullWidth label="Type" value={form.category} onChange={e => setCategory(e.target.value as MaterialCategory)}>
               {(Object.keys(MATERIAL_CATEGORY_LABELS) as MaterialCategory[]).map(k =>
                 <MenuItem key={k} value={k}>{MATERIAL_CATEGORY_LABELS[k]}</MenuItem>)}
             </TextField>
             <TextField select fullWidth label="Family" value={form.family} onChange={e => set('family', e.target.value as MaterialFamily | '')}>
               <MenuItem value=""><em>unknown</em></MenuItem>
-              {(Object.keys(FAMILY_LABELS) as MaterialFamily[]).map(k => <MenuItem key={k} value={k}>{FAMILY_LABELS[k]}</MenuItem>)}
+              {FAMILIES_BY_CATEGORY[form.category].map(k => <MenuItem key={k} value={k}>{FAMILY_LABELS[k]}</MenuItem>)}
             </TextField>
           </Stack>
           <Stack direction="row" sx={{ gap: 2 }}>

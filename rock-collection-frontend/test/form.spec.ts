@@ -99,7 +99,7 @@ test('"Add & next" keeps where-I-got-it details for the next specimen', async ({
   }
 });
 
-test('A new material can be created from inside the specimen form', async ({ page, request }) => {
+test('A new material can be created from inside the specimen form; Type comes from the specimen nature', async ({ page, request }) => {
   const stamp = Date.now();
   const materialName = `Testite ${stamp}`;
   const specimenName = `Material test ${stamp}`;
@@ -108,12 +108,21 @@ test('A new material can be created from inside the specimen form', async ({ pag
     await page.getByRole('button', { name: 'Add a specimen' }).click();
     const form = page.getByRole('dialog', { name: 'Add a specimen' });
     await form.getByRole('textbox', { name: 'Name', exact: true }).fill(specimenName);
+    await form.getByRole('combobox', { name: 'Nature' }).click();
+    await page.getByRole('option', { name: 'Natural rock' }).click();
     await form.getByRole('button', { name: '+ Add material' }).click();
     await form.getByRole('combobox', { name: 'Material' }).fill(materialName);
     await page.getByRole('option', { name: `Add “${materialName}” as a new material` }).click();
 
     const materialDialog = page.getByRole('dialog', { name: 'Add a material' });
     await expect(materialDialog.getByRole('textbox', { name: 'Scientific name' })).toHaveValue(materialName);
+    // A mineraloid only offers mineraloid families and starts without a crystal structure
+    await materialDialog.getByRole('combobox', { name: 'Type' }).click();
+    await page.getByRole('option', { name: 'Mineraloid' }).click();
+    await expect(materialDialog.getByRole('combobox', { name: 'Crystal system' })).toHaveText('Amorphous (no crystal structure)');
+    await materialDialog.getByRole('combobox', { name: 'Family' }).click();
+    await expect(page.getByRole('option', { name: 'Silicate' })).toHaveCount(0);
+    await page.getByRole('option', { name: 'Volcanic glass' }).click();
     await materialDialog.getByRole('button', { name: 'Add', exact: true }).click();
     await expect(form.getByRole('combobox', { name: 'Material' })).toHaveValue(materialName);
 
@@ -121,7 +130,13 @@ test('A new material can be created from inside the specimen form', async ({ pag
     await expect(form).toBeHidden();
     const recent = (await (await request.get(`${API}/specimens?size=5&sort=id&direction=desc`)).json()).content;
     const created = recent.find((s: { name: string }) => s.name === specimenName);
-    expect(created.components[0]).toMatchObject({ materialName, role: 'HOST', certainty: 'TENTATIVE' });
+    expect(created.components[0]).toMatchObject({ materialName, category: 'MINERALOID', family: 'VOLCANIC_GLASS', role: 'HOST', certainty: 'TENTATIVE' });
+    expect(created.nature).toBe('NATURAL_ROCK');
+    await page.getByRole('button', { name: '#' }).click();
+    await page.getByRole('button', { name: '#' }).click(); // newest first
+    const row = page.getByRole('row', { name: new RegExp(specimenName) });
+    await expect(row.getByRole('cell', { name: 'Rock', exact: true })).toBeVisible();
+    await expect(row.getByRole('cell', { name: 'Volcanic glass', exact: true })).toBeVisible();
   } finally {
     await deleteSpecimensNamed(request, specimenName);
     const materials = await (await request.get(`${API}/materials`)).json();

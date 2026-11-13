@@ -9,7 +9,7 @@ import { fetchSpecimen } from './api';
 import PhotosSection from './PhotosSection';
 import {
   ACQUISITION_LABELS, CERTAINTY_LABELS, CRYSTAL_SYSTEM_LABELS, FAMILY_LABELS, FORM_LABELS, MATERIAL_CATEGORY_LABELS,
-  NATURE_LABELS, OPTICAL_EFFECT_LABELS, ROLE_LABELS, SPECIAL_PROPERTY_LABELS, SpecimenDetail,
+  NATURE_LABELS, OPTICAL_EFFECT_LABELS, ROLE_SHORT_LABELS, SPECIAL_PROPERTY_LABELS, SpecimenDetail,
 } from './types';
 
 interface Props {
@@ -108,7 +108,7 @@ const SpecimenDetailDialog: React.FC<Props> = ({ specimenId, refreshKey = 0, onC
             <Section title="Scientific identity" fields={[
               ['Form', s.form && FORM_LABELS[s.form]],
               ['Nature', s.nature && NATURE_LABELS[s.nature]],
-              ['Unidentified inclusions', s.inclusions],
+              ['Unidentified components', s.inclusions],
             ]}>
               {s.components.length === 0 ? (
                 <Typography variant="body2" sx={{ mb: 1 }}>Unidentified</Typography>
@@ -118,7 +118,7 @@ const SpecimenDetailDialog: React.FC<Props> = ({ specimenId, refreshKey = 0, onC
                     <Box key={i}>
                       <Stack direction="row" sx={{ gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
                         <Typography variant="body1" sx={{ fontWeight: 500 }}>{c.materialName}</Typography>
-                        <Chip size="small" variant="outlined" label={ROLE_LABELS[c.role]} />
+                        <Chip size="small" variant="outlined" label={ROLE_SHORT_LABELS[c.role]} />
                         <Chip size="small" variant={c.certainty === 'CONFIRMED' ? 'filled' : 'outlined'} label={CERTAINTY_LABELS[c.certainty]} />
                       </Stack>
                       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
@@ -132,9 +132,14 @@ const SpecimenDetailDialog: React.FC<Props> = ({ specimenId, refreshKey = 0, onC
               )}
             </Section>
 
+            <Section title="Size & weight" fields={[
+              ['Weight', s.weightG !== null ? `${s.weightG} g` : null],
+              ['Size', formatSize(s.lengthMm, s.widthMm, s.heightMm)],
+            ]} />
+
             <Section title="Appearance" fields={[
               ['Colour', [s.color, s.secondaryColor].filter(Boolean).join(', ') || null],
-              ['Luster', s.luster],
+              ['Lustre', s.luster],
               ['Transparency', s.transparency],
               ['Optical effects', joinLabels(s.opticalEffects, OPTICAL_EFFECT_LABELS)],
             ]} />
@@ -150,10 +155,6 @@ const SpecimenDetailDialog: React.FC<Props> = ({ specimenId, refreshKey = 0, onC
               ['Other observations', s.otherObservations],
             ]} />
 
-            <Section title="Size & weight" fields={[
-              ['Weight', s.weightG !== null ? `${s.weightG} g` : null],
-              ['Size', formatSize(s.lengthMm, s.widthMm, s.heightMm)],
-            ]} />
 
             <Section title="Origin & acquisition" fields={[
               ['Locality', [s.locality, s.country].filter(Boolean).join(', ') || null],

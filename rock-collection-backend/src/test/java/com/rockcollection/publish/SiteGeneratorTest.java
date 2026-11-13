@@ -52,12 +52,12 @@ class SiteGeneratorTest {
         s.setTags(List.of("gift-from-mum"));
         s.setDescription("Found in a scrap box.\n\nHas a tiny geode.");
         s.setPrivateNotes("PRIVATE NOTE never to be published");
-        Material rhyolite = new Material();
-        rhyolite.setName("Rhyolite");
-        rhyolite.setCategory(MaterialCategory.ROCK);
-        rhyolite.setFamily(MaterialFamily.IGNEOUS);
-        rhyolite.setMindatUrl("https://www.mindat.org/min-3417.html");
-        s.replaceComponents(List.of(new SpecimenComponent(rhyolite, ComponentRole.HOST, IdentificationCertainty.TENTATIVE)));
+        Material orthoclase = new Material();
+        orthoclase.setName("Orthoclase");
+        orthoclase.setCategory(MaterialCategory.MINERAL);
+        orthoclase.setFamily(MaterialFamily.SILICATE);
+        orthoclase.setMindatUrl("https://www.mindat.org/min-3417.html");
+        s.replaceComponents(List.of(new SpecimenComponent(orthoclase, ComponentRole.HOST, IdentificationCertainty.TENTATIVE)));
         return s;
     }
 
@@ -76,7 +76,7 @@ class SiteGeneratorTest {
     void defaultFields_publishTheEvidenceButNoPrivateOrAcquisitionDetails() {
         String page = generate(DEFAULTS, List.of(fullSpecimen()), Map.of()).get("specimens/7/index.html");
 
-        assertThat(page).contains("Scrap-bin find", "Sold as “Unknown green”", "Rhyolite", "Tentative", "Igneous",
+        assertThat(page).contains("Scrap-bin find", "Sold as “Unknown green”", "Orthoclase", "Tentative", "Silicate",
                 "green, purple", "6–6.5", "2.55", "41.3 g", "42 × 30 mm", "Iridescence", "Lower Silesia, Poland",
                 "<p>Found in a scrap box.</p>", "<p>Has a tiny geode.</p>", "specimen #7");
         assertThat(page).doesNotContain("Secret Seller", "Bought", "May 2024", "1 PLN", "gift-from-mum", "PRIVATE NOTE");
@@ -97,8 +97,8 @@ class SiteGeneratorTest {
         String page = site.get("specimens/7/index.html");
 
         assertThat(page).contains("Specimen #7", "Scrap-bin find", "../../photos/7/a.jpg");
-        assertThat(page).doesNotContain("Rhyolite", "Unknown green", "green", "Lower Silesia", "scrap box", "Scientific identity");
-        assertThat(site.get("index.html")).doesNotContain("Rhyolite", "Unidentified only");
+        assertThat(page).doesNotContain("Orthoclase", "Unknown green", "green", "Lower Silesia", "scrap box", "Scientific identity");
+        assertThat(site.get("index.html")).doesNotContain("Orthoclase", "Unidentified only");
     }
 
     @Test
@@ -139,7 +139,7 @@ class SiteGeneratorTest {
 
         assertThat(index).contains("2 specimens · 1 still unidentified", "<p class=\"intro\">Hello experts.</p>",
                 "href=\"specimens/3/\"", "href=\"specimens/7/\"", "src=\"photos/7/cover-small.jpg\"",
-                "Rhyolite (tentative)", "data-unidentified=\"true\"", "Unidentified only");
+                "Orthoclase (tentative)", "data-unidentified=\"true\"", "Unidentified only");
         assertThat(index.indexOf("Piasek Pustyni")).isLessThan(index.indexOf("Scrap-bin find")); // by number
         assertThat(index).doesNotContain("back");
     }

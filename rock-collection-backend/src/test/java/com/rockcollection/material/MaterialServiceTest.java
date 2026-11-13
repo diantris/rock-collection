@@ -1,5 +1,6 @@
 package com.rockcollection.material;
 
+import com.rockcollection.common.BadRequestException;
 import com.rockcollection.common.ConflictException;
 import com.rockcollection.specimen.SpecimenComponentRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +36,13 @@ class MaterialServiceTest {
         assertThatThrownBy(() -> service.create(new MaterialDto.Request(" quartz ", MaterialCategory.MINERAL, null, null, null, null, null, null)))
                 .isInstanceOf(ConflictException.class);
         verify(materialRepository, never()).save(any());
+    }
+
+    @Test
+    void create_familyOfAnotherType_isRejected() {
+        assertThatThrownBy(() -> service.create(new MaterialDto.Request(
+                "Moldavite glass", MaterialCategory.MINERAL, MaterialFamily.IMPACT_GLASS, null, null, null, null, null)))
+                .isInstanceOf(BadRequestException.class);
     }
 
     @Test

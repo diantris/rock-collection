@@ -1,6 +1,7 @@
 // MaterialService.java - Business logic for the reference list of materials
 package com.rockcollection.material;
 
+import com.rockcollection.common.BadRequestException;
 import com.rockcollection.common.ConflictException;
 import com.rockcollection.common.NotFoundException;
 import com.rockcollection.specimen.SpecimenComponentRepository;
@@ -70,6 +71,9 @@ public class MaterialService {
     }
 
     private static void apply(Material material, MaterialDto.Request request) {
+        if (request.family() != null && request.family().category() != request.category()) {
+            throw new BadRequestException("family " + request.family() + " doesn't belong to type " + request.category());
+        }
         material.setName(request.name().trim());
         material.setCategory(request.category());
         material.setFamily(request.family());

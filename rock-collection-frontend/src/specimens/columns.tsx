@@ -4,8 +4,8 @@ import { Box, Chip, Stack, Tooltip, Typography } from '@mui/material';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { thumbnailUrl } from './api';
 import {
-  ACQUISITION_LABELS, CERTAINTY_LABELS, Component, FAMILY_LABELS, FORM_LABELS, MATERIAL_CATEGORY_LABELS, NATURE_LABELS,
-  ROLE_LABELS, SpecimenSortKey, SpecimenSummary,
+  ACQUISITION_LABELS, CERTAINTY_LABELS, Component, FAMILY_LABELS, FORM_LABELS, NATURE_TYPE_LABELS, NATURE_LABELS,
+  ROLE_SHORT_LABELS, SpecimenSortKey, SpecimenSummary,
 } from './types';
 
 /** Muted placeholder for missing data. */
@@ -18,10 +18,10 @@ export const ComponentChips: React.FC<{ components: Component[] }> = ({ componen
   components.length === 0 ? <Unknown text="unidentified" /> : (
     <Stack direction="row" sx={{ gap: 0.5, flexWrap: 'wrap' }}>
       {components.map((c, i) => (
-        <Tooltip key={i} title={`${ROLE_LABELS[c.role]} · ${CERTAINTY_LABELS[c.certainty]}`}>
+        <Tooltip key={i} title={`${ROLE_SHORT_LABELS[c.role]} · ${CERTAINTY_LABELS[c.certainty]}`}>
           <Chip
             size="small"
-            label={c.role === 'HOST' ? c.materialName : `${c.materialName} · ${ROLE_LABELS[c.role].toLowerCase()}`}
+            label={c.role === 'HOST' ? c.materialName : `${c.materialName} · ${ROLE_SHORT_LABELS[c.role].toLowerCase()}`}
             variant={c.certainty === 'CONFIRMED' ? 'filled' : 'outlined'}
           />
         </Tooltip>
@@ -62,7 +62,7 @@ export const COLUMNS: ColumnDef[] = [
   },
   { id: 'marketName', label: 'Market name', sortKey: 'marketName', defaultVisible: true, render: s => orUnknown(s.marketName) },
   { id: 'materials', label: 'Scientific identity', defaultVisible: false, render: s => <ComponentChips components={s.components} /> },
-  { id: 'type', label: 'Type', defaultVisible: true, render: s => orUnknown(s.type && MATERIAL_CATEGORY_LABELS[s.type]) },
+  { id: 'type', label: 'Type', defaultVisible: true, render: s => orUnknown(s.nature && NATURE_TYPE_LABELS[s.nature]) },
   { id: 'family', label: 'Family', defaultVisible: true, render: s => orUnknown(s.family && FAMILY_LABELS[s.family]) },
   { id: 'acquiredFrom', label: 'Where I got it', sortKey: 'acquiredFrom', defaultVisible: true, render: s => orUnknown(s.acquiredFrom) },
   { id: 'acquiredCountry', label: 'Country (where I got it)', sortKey: 'acquiredCountry', defaultVisible: false, render: s => orUnknown(s.acquiredCountry) },

@@ -1,13 +1,20 @@
-// SpecimenNature.java - Whether a specimen is natural, altered or artificial
+// SpecimenNature.java - What kind of thing a specimen is, and whether it is natural, treated or man-made
 package com.rockcollection.specimen;
 
 /**
- * Whether a specimen is natural, altered or artificial
+ * What kind of thing a specimen is (mineral, rock, organic, mineraloid) and whether it is natural, treated or
+ * man-made. Only specimens can be rocks; their materials never are.
  */
 public enum SpecimenNature {
-    NATURAL, // untreated natural material
-    TREATED, // natural but dyed, heated, stabilised, etc.
-    SYNTHETIC, // lab-grown equivalent of a natural material
-    MAN_MADE, // imitation or artificial material, e.g. glass
+    NATURAL_MINERAL, // e.g. a quartz crystal
+    NATURAL_ROCK, // e.g. jasper, obsidian, unakite
+    NATURAL_ORGANIC, // e.g. amber, a shell
+    NATURAL_MINERALOID, // e.g. opal, moldavite
+    TREATED_MINERAL, // natural but dyed, heated, stabilised, etc.
+    TREATED_ROCK,
+    TREATED_ORGANIC,
+    TREATED_MINERALOID,
+    SYNTHETIC, // lab-grown, with a natural counterpart, e.g. a lab-grown ruby
+    ARTIFICIAL, // no natural counterpart, e.g. goldstone (glass)
     UNKNOWN // not known
 }

@@ -149,10 +149,13 @@ public class SiteGenerator {
                         row(on.test(PublishField.FORM), "Form", label(SiteLabels.FORM, s.getForm())),
                         row(on.test(PublishField.NATURE), "Nature", label(SiteLabels.NATURE, s.getNature())),
                         row(on.test(PublishField.TREATMENT), "Treatment", s.getTreatmentNotes()),
-                        row(on.test(PublishField.INCLUSIONS), "Unidentified inclusions", s.getInclusions()))),
+                        row(on.test(PublishField.INCLUSIONS), "Unidentified components", s.getInclusions()))),
+                section("Size & weight", Arrays.asList(
+                        row(on.test(PublishField.WEIGHT), "Weight", s.getWeightG() == null ? null : number(s.getWeightG()) + " g"),
+                        row(on.test(PublishField.SIZE), "Size", size(s.getLengthMm(), s.getWidthMm(), s.getHeightMm())))),
                 section("Appearance", Arrays.asList(
                         row(on.test(PublishField.COLOR), "Colour", join(", ", s.getColor(), s.getSecondaryColor())),
-                        row(on.test(PublishField.LUSTER), "Luster", s.getLuster()),
+                        row(on.test(PublishField.LUSTER), "Lustre", s.getLuster()),
                         row(on.test(PublishField.TRANSPARENCY), "Transparency", s.getTransparency()),
                         row(on.test(PublishField.OPTICAL_EFFECTS), "Optical effects",
                                 labels(s.opticalEffectValues(), SiteLabels.OPTICAL_EFFECT)))),
@@ -166,9 +169,6 @@ public class SiteGenerator {
                         row(on.test(PublishField.SPECIAL_PROPERTIES), "Special properties",
                                 labels(s.specialPropertyValues(), SiteLabels.SPECIAL_PROPERTY)),
                         row(on.test(PublishField.OTHER_OBSERVATIONS), "Other observations", s.getOtherObservations()))),
-                section("Size & weight", Arrays.asList(
-                        row(on.test(PublishField.WEIGHT), "Weight", s.getWeightG() == null ? null : number(s.getWeightG()) + " g"),
-                        row(on.test(PublishField.SIZE), "Size", size(s.getLengthMm(), s.getWidthMm(), s.getHeightMm())))),
                 section("Origin & acquisition", Arrays.asList(
                         row(on.test(PublishField.LOCALITY), "Locality", join(", ", s.getLocality(), s.getCountry())),
                         row(on.test(PublishField.ACQUISITION_TYPE), "Source", label(SiteLabels.ACQUISITION, s.getAcquisitionType())),

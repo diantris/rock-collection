@@ -368,12 +368,18 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
                   ])}>
                   + Add material
                 </Button>
-                {text('inclusions', 'Unidentified inclusions', { multiline: true, helperText: 'e.g. “tiny black needles”' })}
+                {text('inclusions', 'Unidentified components', {
+                  multiline: true, helperText: 'e.g. “black needles inside, white crust alongside, red specks in the matrix”',
+                })}
               </>, true)}
 
+              {section('Size & weight', SECTIONS.size, <>
+                {row(text('weightG', 'Weight (g)'), text('lengthMm', 'Length (mm)'), text('widthMm', 'Width (mm)'), text('heightMm', 'Height (mm)'))}
+              </>)}
+
               {section('Appearance', SECTIONS.appearance, <>
-                {row(text('color', 'Colour'), text('secondaryColor', 'Secondary colour'))}
-                {row(suggest('luster', 'Luster', LUSTER_SUGGESTIONS), suggest('transparency', 'Transparency', TRANSPARENCY_SUGGESTIONS))}
+                {row(text('color', 'Colour'), text('secondaryColor', 'Secondary colours', { helperText: 'e.g. “white, rust red”' }))}
+                {row(suggest('luster', 'Lustre', LUSTER_SUGGESTIONS), suggest('transparency', 'Transparency', TRANSPARENCY_SUGGESTIONS))}
                 {enumMulti('opticalEffects', 'Optical effects', OPTICAL_EFFECT_LABELS)}
               </>)}
 
@@ -388,10 +394,6 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
                 {suggest('crystalHabit', 'Crystal habit', HABIT_SUGGESTIONS)}
                 {enumMulti('specialProperties', 'Special properties', SPECIAL_PROPERTY_LABELS)}
                 {text('otherObservations', 'Other observations', { multiline: true })}
-              </>)}
-
-              {section('Size & weight', SECTIONS.size, <>
-                {row(text('weightG', 'Weight (g)'), text('lengthMm', 'Length (mm)'), text('widthMm', 'Width (mm)'), text('heightMm', 'Height (mm)'))}
               </>)}
 
               {section('Origin & acquisition', SECTIONS.provenance, <>

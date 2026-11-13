@@ -1,13 +1,20 @@
 // types.ts - Types mirroring the backend specimen / material API, plus display labels for enums
 
-export type MaterialCategory = 'MINERAL' | 'ROCK' | 'ORGANIC' | 'MAN_MADE';
+/** Type of a material. Materials are what specimens are made of, so never a rock (a rock is a specimen). */
+export type MaterialCategory = 'MINERAL' | 'MINERALOID' | 'ORGANIC' | 'MAN_MADE';
 export type MaterialFamily =
-  | 'NATIVE_ELEMENT' | 'SULFIDE' | 'HALIDE' | 'OXIDE' | 'HYDROXIDE' | 'CARBONATE' | 'BORATE' | 'SULFATE'
-  | 'PHOSPHATE' | 'SILICATE' | 'ORGANIC_COMPOUND' | 'IGNEOUS' | 'SEDIMENTARY' | 'METAMORPHIC' | 'OTHER';
+  | 'SILICATE' | 'OXIDE_HYDROXIDE' | 'CARBONATE' | 'SULFATE' | 'PHOSPHATE' | 'SULFIDE' | 'NATIVE_ELEMENT' | 'HALIDE' | 'BORATE'
+  | 'VOLCANIC_GLASS' | 'IMPACT_GLASS' | 'AMORPHOUS_SILICA' | 'AMORPHOUS_OXIDE_HYDROXIDE'
+  | 'FOSSIL_RESIN_HYDROCARBON' | 'BIOMINERAL' | 'ORGANIC_TISSUE' | 'FAUNA_FLORA_INCLUSION'
+  | 'GLASS' | 'METAL_ALLOY' | 'POLYMER_RESIN' | 'MAN_MADE_CRYSTAL';
 export type CrystalSystem = 'CUBIC' | 'TETRAGONAL' | 'ORTHORHOMBIC' | 'HEXAGONAL' | 'TRIGONAL' | 'MONOCLINIC' | 'TRICLINIC' | 'AMORPHOUS';
 export type SpecimenForm =
   | 'ROUGH' | 'CRYSTAL' | 'TUMBLED' | 'CABOCHON' | 'SPHERE' | 'POINT' | 'FACETED' | 'CARVED' | 'SLAB' | 'BEAD' | 'JEWELRY' | 'OTHER';
-export type SpecimenNature = 'NATURAL' | 'TREATED' | 'SYNTHETIC' | 'MAN_MADE' | 'UNKNOWN';
+/** What kind of thing a specimen is, and whether it's natural, treated or man-made. */
+export type SpecimenNature =
+  | 'NATURAL_MINERAL' | 'NATURAL_ROCK' | 'NATURAL_ORGANIC' | 'NATURAL_MINERALOID'
+  | 'TREATED_MINERAL' | 'TREATED_ROCK' | 'TREATED_ORGANIC' | 'TREATED_MINERALOID'
+  | 'SYNTHETIC' | 'ARTIFICIAL' | 'UNKNOWN';
 export type AcquisitionType = 'BOUGHT' | 'FOUND' | 'GIFT' | 'TRADED' | 'INHERITED' | 'UNKNOWN';
 export type ComponentRole = 'HOST' | 'INCLUSION' | 'ASSOCIATED' | 'MATRIX';
 export type IdentificationCertainty = 'CONFIRMED' | 'TENTATIVE' | 'SELLER_CLAIM';
@@ -19,30 +26,53 @@ export type OpticalEffect =
   | 'OPALESCENCE' | 'AVENTURESCENCE' | 'COLOR_CHANGE';
 
 export const MATERIAL_CATEGORY_LABELS: Record<MaterialCategory, string> = {
-  MINERAL: 'Mineral', ROCK: 'Rock', ORGANIC: 'Organic', MAN_MADE: 'Artificial / man-made',
+  MINERAL: 'Mineral', MINERALOID: 'Mineraloid', ORGANIC: 'Organic', MAN_MADE: 'Man-made',
 };
 export const FAMILY_LABELS: Record<MaterialFamily, string> = {
-  NATIVE_ELEMENT: 'Native element', SULFIDE: 'Sulfide', HALIDE: 'Halide', OXIDE: 'Oxide', HYDROXIDE: 'Hydroxide',
-  CARBONATE: 'Carbonate', BORATE: 'Borate', SULFATE: 'Sulfate', PHOSPHATE: 'Phosphate', SILICATE: 'Silicate',
-  ORGANIC_COMPOUND: 'Organic compound', IGNEOUS: 'Igneous', SEDIMENTARY: 'Sedimentary', METAMORPHIC: 'Metamorphic',
-  OTHER: 'Other',
+  SILICATE: 'Silicate', OXIDE_HYDROXIDE: 'Oxide / hydroxide', CARBONATE: 'Carbonate', SULFATE: 'Sulfate',
+  PHOSPHATE: 'Phosphate', SULFIDE: 'Sulfide', NATIVE_ELEMENT: 'Native element', HALIDE: 'Halide', BORATE: 'Borate',
+  VOLCANIC_GLASS: 'Volcanic glass', IMPACT_GLASS: 'Impact glass / tektite', AMORPHOUS_SILICA: 'Amorphous silica',
+  AMORPHOUS_OXIDE_HYDROXIDE: 'Amorphous oxide / hydroxide',
+  FOSSIL_RESIN_HYDROCARBON: 'Fossil resin / hydrocarbon', BIOMINERAL: 'Biomineral',
+  ORGANIC_TISSUE: 'Organic tissue / fossil remains', FAUNA_FLORA_INCLUSION: 'Fauna / flora inclusion',
+  GLASS: 'Glass / amorphous', METAL_ALLOY: 'Metal / alloy', POLYMER_RESIN: 'Polymer / resin', MAN_MADE_CRYSTAL: 'Man-made crystal',
+};
+/** The families each material type offers (MaterialFamily.category() on the backend). */
+export const FAMILIES_BY_CATEGORY: Record<MaterialCategory, MaterialFamily[]> = {
+  MINERAL: ['SILICATE', 'OXIDE_HYDROXIDE', 'CARBONATE', 'SULFATE', 'PHOSPHATE', 'SULFIDE', 'NATIVE_ELEMENT', 'HALIDE', 'BORATE'],
+  MINERALOID: ['VOLCANIC_GLASS', 'IMPACT_GLASS', 'AMORPHOUS_SILICA', 'AMORPHOUS_OXIDE_HYDROXIDE'],
+  ORGANIC: ['FOSSIL_RESIN_HYDROCARBON', 'BIOMINERAL', 'ORGANIC_TISSUE', 'FAUNA_FLORA_INCLUSION'],
+  MAN_MADE: ['GLASS', 'METAL_ALLOY', 'POLYMER_RESIN', 'MAN_MADE_CRYSTAL'],
 };
 export const CRYSTAL_SYSTEM_LABELS: Record<CrystalSystem, string> = {
   CUBIC: 'Cubic', TETRAGONAL: 'Tetragonal', ORTHORHOMBIC: 'Orthorhombic', HEXAGONAL: 'Hexagonal',
-  TRIGONAL: 'Trigonal', MONOCLINIC: 'Monoclinic', TRICLINIC: 'Triclinic', AMORPHOUS: 'Amorphous',
+  TRIGONAL: 'Trigonal', MONOCLINIC: 'Monoclinic', TRICLINIC: 'Triclinic', AMORPHOUS: 'Amorphous (no crystal structure)',
 };
 export const FORM_LABELS: Record<SpecimenForm, string> = {
   ROUGH: 'Rough', CRYSTAL: 'Crystal / cluster', TUMBLED: 'Tumbled', CABOCHON: 'Cabochon', SPHERE: 'Sphere',
-  POINT: 'Point / tower', FACETED: 'Faceted', CARVED: 'Carved', SLAB: 'Slab', BEAD: 'Bead', JEWELRY: 'Jewelry', OTHER: 'Other',
+  POINT: 'Point / tower', FACETED: 'Faceted', CARVED: 'Carved', SLAB: 'Slab', BEAD: 'Bead', JEWELRY: 'Jewellery', OTHER: 'Other',
 };
 export const NATURE_LABELS: Record<SpecimenNature, string> = {
-  NATURAL: 'Natural', TREATED: 'Treated', SYNTHETIC: 'Synthetic', MAN_MADE: 'Man-made', UNKNOWN: 'Unknown',
+  NATURAL_MINERAL: 'Natural mineral', NATURAL_ROCK: 'Natural rock', NATURAL_ORGANIC: 'Natural organic',
+  NATURAL_MINERALOID: 'Natural mineraloid', TREATED_MINERAL: 'Treated mineral', TREATED_ROCK: 'Treated rock',
+  TREATED_ORGANIC: 'Treated organic', TREATED_MINERALOID: 'Treated mineraloid', SYNTHETIC: 'Synthetic (lab-grown)',
+  ARTIFICIAL: 'Artificial', UNKNOWN: 'Unknown',
+};
+/** The table's Type column: what kind of thing the specimen is, from its nature (natural or treated alike). */
+export const NATURE_TYPE_LABELS: Record<SpecimenNature, string | null> = {
+  NATURAL_MINERAL: 'Mineral', NATURAL_ROCK: 'Rock', NATURAL_ORGANIC: 'Organic', NATURAL_MINERALOID: 'Mineraloid',
+  TREATED_MINERAL: 'Mineral', TREATED_ROCK: 'Rock', TREATED_ORGANIC: 'Organic', TREATED_MINERALOID: 'Mineraloid',
+  SYNTHETIC: 'Synthetic', ARTIFICIAL: 'Artificial', UNKNOWN: null,
 };
 export const ACQUISITION_LABELS: Record<AcquisitionType, string> = {
   BOUGHT: 'Bought', FOUND: 'Found', GIFT: 'Gift', TRADED: 'Traded', INHERITED: 'Inherited', UNKNOWN: 'Unknown',
 };
 export const ROLE_LABELS: Record<ComponentRole, string> = {
-  HOST: 'Host', INCLUSION: 'Inclusion', ASSOCIATED: 'Associated', MATRIX: 'Matrix',
+  HOST: 'Host', INCLUSION: 'Inclusion', ASSOCIATED: 'Associated (grows alongside)', MATRIX: 'Matrix component',
+};
+/** Shorter role names for chips; the role dropdown uses ROLE_LABELS, which explain "associated". */
+export const ROLE_SHORT_LABELS: Record<ComponentRole, string> = {
+  HOST: 'Host', INCLUSION: 'Inclusion', ASSOCIATED: 'Associated', MATRIX: 'Matrix component',
 };
 export const CERTAINTY_LABELS: Record<IdentificationCertainty, string> = {
   CONFIRMED: 'Confirmed', TENTATIVE: 'Tentative', SELLER_CLAIM: "Seller's claim",
@@ -54,8 +84,8 @@ export const SPECIAL_PROPERTY_LABELS: Record<SpecialProperty, string> = {
 };
 export const OPTICAL_EFFECT_LABELS: Record<OpticalEffect, string> = {
   CHATOYANCY: 'Chatoyancy (cat’s eye)', ASTERISM: 'Asterism (star)', IRIDESCENCE: 'Iridescence',
-  LABRADORESCENCE: 'Labradorescence', ADULARESCENCE: 'Adularescence', PLAY_OF_COLOR: 'Play of color',
-  OPALESCENCE: 'Opalescence', AVENTURESCENCE: 'Aventurescence', COLOR_CHANGE: 'Color change',
+  LABRADORESCENCE: 'Labradorescence', ADULARESCENCE: 'Adularescence', PLAY_OF_COLOR: 'Play of colour',
+  OPALESCENCE: 'Opalescence', AVENTURESCENCE: 'Aventurescence', COLOR_CHANGE: 'Colour change',
 };
 
 export interface Material {
@@ -81,13 +111,12 @@ export interface Component {
   certainty: IdentificationCertainty;
 }
 
-/** Row of the paginated specimen table. `type`/`family` come from the primary (host) material. */
+/** Row of the paginated specimen table. `family` comes from the primary (host) material; the Type column from `nature`. */
 export interface SpecimenSummary {
   id: number;
   name: string;
   marketName: string | null;
   components: Component[];
-  type: MaterialCategory | null;
   family: MaterialFamily | null;
   form: SpecimenForm | null;
   nature: SpecimenNature | null;

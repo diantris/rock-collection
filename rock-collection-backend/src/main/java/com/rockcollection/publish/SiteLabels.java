@@ -13,23 +13,29 @@ final class SiteLabels {
     private SiteLabels() {}
 
     static final Map<MaterialCategory, String> CATEGORY = Map.of(
-            MaterialCategory.MINERAL, "Mineral", MaterialCategory.ROCK, "Rock", MaterialCategory.ORGANIC, "Organic",
-            MaterialCategory.MAN_MADE, "Artificial / man-made");
+            MaterialCategory.MINERAL, "Mineral", MaterialCategory.MINERALOID, "Mineraloid",
+            MaterialCategory.ORGANIC, "Organic", MaterialCategory.MAN_MADE, "Man-made");
 
     static final Map<MaterialFamily, String> FAMILY = Map.ofEntries(
-            Map.entry(MaterialFamily.NATIVE_ELEMENT, "Native element"), Map.entry(MaterialFamily.SULFIDE, "Sulfide"),
-            Map.entry(MaterialFamily.HALIDE, "Halide"), Map.entry(MaterialFamily.OXIDE, "Oxide"),
-            Map.entry(MaterialFamily.HYDROXIDE, "Hydroxide"), Map.entry(MaterialFamily.CARBONATE, "Carbonate"),
-            Map.entry(MaterialFamily.BORATE, "Borate"), Map.entry(MaterialFamily.SULFATE, "Sulfate"),
-            Map.entry(MaterialFamily.PHOSPHATE, "Phosphate"), Map.entry(MaterialFamily.SILICATE, "Silicate"),
-            Map.entry(MaterialFamily.ORGANIC_COMPOUND, "Organic compound"), Map.entry(MaterialFamily.IGNEOUS, "Igneous"),
-            Map.entry(MaterialFamily.SEDIMENTARY, "Sedimentary"), Map.entry(MaterialFamily.METAMORPHIC, "Metamorphic"),
-            Map.entry(MaterialFamily.OTHER, "Other"));
+            Map.entry(MaterialFamily.SILICATE, "Silicate"), Map.entry(MaterialFamily.OXIDE_HYDROXIDE, "Oxide / hydroxide"),
+            Map.entry(MaterialFamily.CARBONATE, "Carbonate"), Map.entry(MaterialFamily.SULFATE, "Sulfate"),
+            Map.entry(MaterialFamily.PHOSPHATE, "Phosphate"), Map.entry(MaterialFamily.SULFIDE, "Sulfide"),
+            Map.entry(MaterialFamily.NATIVE_ELEMENT, "Native element"), Map.entry(MaterialFamily.HALIDE, "Halide"),
+            Map.entry(MaterialFamily.BORATE, "Borate"),
+            Map.entry(MaterialFamily.VOLCANIC_GLASS, "Volcanic glass"), Map.entry(MaterialFamily.IMPACT_GLASS, "Impact glass / tektite"),
+            Map.entry(MaterialFamily.AMORPHOUS_SILICA, "Amorphous silica"),
+            Map.entry(MaterialFamily.AMORPHOUS_OXIDE_HYDROXIDE, "Amorphous oxide / hydroxide"),
+            Map.entry(MaterialFamily.FOSSIL_RESIN_HYDROCARBON, "Fossil resin / hydrocarbon"),
+            Map.entry(MaterialFamily.BIOMINERAL, "Biomineral"),
+            Map.entry(MaterialFamily.ORGANIC_TISSUE, "Organic tissue / fossil remains"),
+            Map.entry(MaterialFamily.FAUNA_FLORA_INCLUSION, "Fauna / flora inclusion"),
+            Map.entry(MaterialFamily.GLASS, "Glass / amorphous"), Map.entry(MaterialFamily.METAL_ALLOY, "Metal / alloy"),
+            Map.entry(MaterialFamily.POLYMER_RESIN, "Polymer / resin"), Map.entry(MaterialFamily.MAN_MADE_CRYSTAL, "Man-made crystal"));
 
     static final Map<CrystalSystem, String> CRYSTAL_SYSTEM = Map.of(
             CrystalSystem.CUBIC, "Cubic", CrystalSystem.TETRAGONAL, "Tetragonal", CrystalSystem.ORTHORHOMBIC, "Orthorhombic",
             CrystalSystem.HEXAGONAL, "Hexagonal", CrystalSystem.TRIGONAL, "Trigonal", CrystalSystem.MONOCLINIC, "Monoclinic",
-            CrystalSystem.TRICLINIC, "Triclinic", CrystalSystem.AMORPHOUS, "Amorphous");
+            CrystalSystem.TRICLINIC, "Triclinic", CrystalSystem.AMORPHOUS, "Amorphous (no crystal structure)");
 
     static final Map<SpecimenForm, String> FORM = Map.ofEntries(
             Map.entry(SpecimenForm.ROUGH, "Rough"), Map.entry(SpecimenForm.CRYSTAL, "Crystal / cluster"),
@@ -37,11 +43,15 @@ final class SiteLabels {
             Map.entry(SpecimenForm.SPHERE, "Sphere"), Map.entry(SpecimenForm.POINT, "Point / tower"),
             Map.entry(SpecimenForm.FACETED, "Faceted"), Map.entry(SpecimenForm.CARVED, "Carved"),
             Map.entry(SpecimenForm.SLAB, "Slab"), Map.entry(SpecimenForm.BEAD, "Bead"),
-            Map.entry(SpecimenForm.JEWELRY, "Jewelry"), Map.entry(SpecimenForm.OTHER, "Other"));
+            Map.entry(SpecimenForm.JEWELRY, "Jewellery"), Map.entry(SpecimenForm.OTHER, "Other"));
 
-    static final Map<SpecimenNature, String> NATURE = Map.of(
-            SpecimenNature.NATURAL, "Natural", SpecimenNature.TREATED, "Treated", SpecimenNature.SYNTHETIC, "Synthetic",
-            SpecimenNature.MAN_MADE, "Man-made", SpecimenNature.UNKNOWN, "Unknown");
+    static final Map<SpecimenNature, String> NATURE = Map.ofEntries(
+            Map.entry(SpecimenNature.NATURAL_MINERAL, "Natural mineral"), Map.entry(SpecimenNature.NATURAL_ROCK, "Natural rock"),
+            Map.entry(SpecimenNature.NATURAL_ORGANIC, "Natural organic"), Map.entry(SpecimenNature.NATURAL_MINERALOID, "Natural mineraloid"),
+            Map.entry(SpecimenNature.TREATED_MINERAL, "Treated mineral"), Map.entry(SpecimenNature.TREATED_ROCK, "Treated rock"),
+            Map.entry(SpecimenNature.TREATED_ORGANIC, "Treated organic"), Map.entry(SpecimenNature.TREATED_MINERALOID, "Treated mineraloid"),
+            Map.entry(SpecimenNature.SYNTHETIC, "Synthetic (lab-grown)"), Map.entry(SpecimenNature.ARTIFICIAL, "Artificial"),
+            Map.entry(SpecimenNature.UNKNOWN, "Unknown"));
 
     static final Map<AcquisitionType, String> ACQUISITION = Map.of(
             AcquisitionType.BOUGHT, "Bought", AcquisitionType.FOUND, "Found", AcquisitionType.GIFT, "Gift",
@@ -49,7 +59,7 @@ final class SiteLabels {
 
     static final Map<ComponentRole, String> ROLE = Map.of(
             ComponentRole.HOST, "Host", ComponentRole.INCLUSION, "Inclusion", ComponentRole.ASSOCIATED, "Associated",
-            ComponentRole.MATRIX, "Matrix");
+            ComponentRole.MATRIX, "Matrix component");
 
     static final Map<IdentificationCertainty, String> CERTAINTY = Map.of(
             IdentificationCertainty.CONFIRMED, "Confirmed", IdentificationCertainty.TENTATIVE, "Tentative",
@@ -66,7 +76,7 @@ final class SiteLabels {
     static final Map<OpticalEffect, String> OPTICAL_EFFECT = Map.of(
             OpticalEffect.CHATOYANCY, "Chatoyancy (cat’s eye)", OpticalEffect.ASTERISM, "Asterism (star)",
             OpticalEffect.IRIDESCENCE, "Iridescence", OpticalEffect.LABRADORESCENCE, "Labradorescence",
-            OpticalEffect.ADULARESCENCE, "Adularescence", OpticalEffect.PLAY_OF_COLOR, "Play of color",
+            OpticalEffect.ADULARESCENCE, "Adularescence", OpticalEffect.PLAY_OF_COLOR, "Play of colour",
             OpticalEffect.OPALESCENCE, "Opalescence", OpticalEffect.AVENTURESCENCE, "Aventurescence",
-            OpticalEffect.COLOR_CHANGE, "Color change");
+            OpticalEffect.COLOR_CHANGE, "Colour change");
 }
