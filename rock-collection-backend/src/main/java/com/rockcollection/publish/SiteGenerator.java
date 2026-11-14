@@ -114,7 +114,7 @@ public class SiteGenerator {
 
     record SpecimenPage(String root, String pageTitle, String pageDescription, Long id, String name, String marketName,
                         List<String> tags, boolean hasTags, List<PagePhoto> photos, boolean hasPhotos, boolean manyPhotos,
-                        Identity identity, List<Section> sections, List<String> description, boolean hasDescription,
+                        Identity identity, List<Section> sections, List<String> description, Link link, boolean hasNotes,
                         Neighbour prev, Neighbour next) {}
 
     record PagePhoto(String src, Integer width, Integer height, String alt, String caption, int number, boolean first) {}
@@ -122,6 +122,9 @@ public class SiteGenerator {
     record Identity(boolean unidentified, List<IdentityComponent> components) {}
 
     record IdentityComponent(String name, String mindatUrl, String role, String certainty, boolean confirmed, String details) {}
+
+    /** A web link on the specimen page; {@code text} says where it goes. */
+    record Link(String href, String text) {}
 
     record Section(String slug, String title, List<Row> rows) {}
 
@@ -181,11 +184,14 @@ public class SiteGenerator {
         List<String> tags = on.test(PublishField.TAGS) ? List.copyOf(s.getTags()) : List.of();
         List<String> description = on.test(PublishField.DESCRIPTION) ? paragraphs(s.getDescription()) : List.of();
         String marketName = on.test(PublishField.MARKET_NAME) ? s.getMarketName() : null;
+        String href = on.test(PublishField.MINDAT_LINK) ? webLink(s.getMindatUrl()) : null;
+        Link link = href == null ? null
+                : new Link(href, href.matches("(?i)https?://([^/]+\\.)?mindat\\.org(/.*)?") ? "More about it on mindat.org" : href);
         return new SpecimenPage(root, "#%d %s · Rock Collection".formatted(s.getId(), s.getName()),
                 "Specimen #%d: %s. Photos and observations, for help with identification.".formatted(s.getId(), s.getName()),
                 s.getId(), s.getName(), marketName, tags, !tags.isEmpty(),
                 pagePhotos, !pagePhotos.isEmpty(), pagePhotos.size() > 1,
-                identity, sections, description, !description.isEmpty(),
+                identity, sections, description, link, !description.isEmpty() || link != null,
                 neighbour(prev), neighbour(next));
     }
 
@@ -195,10 +201,13 @@ public class SiteGenerator {
                         m.getMineralGroup() == null ? null : m.getMineralGroup() + " group",
                         label(SiteLabels.CRYSTAL_SYSTEM, m.getCrystalSystem()), m.getFormula())
                 .filter(Objects::nonNull).collect(Collectors.joining(" · "));
-        // Only web links become links on the public page (no "javascript:" and the like)
-        String link = m.getMindatUrl() != null && m.getMindatUrl().matches("(?i)https?://\\S+") ? m.getMindatUrl() : null;
-        return new IdentityComponent(m.getName(), link, SiteLabels.ROLE.get(c.getRole()),
+        return new IdentityComponent(m.getName(), webLink(m.getMindatUrl()), SiteLabels.ROLE.get(c.getRole()),
                 SiteLabels.CERTAINTY.get(c.getCertainty()), c.getCertainty() == IdentificationCertainty.CONFIRMED, details);
+    }
+
+    /** The address if it's a web link, otherwise null: only those become links (no "javascript:" and the like). */
+    private static String webLink(String url) {
+        return url != null && url.matches("(?i)https?://\\S+") ? url : null;
     }
 
     private static Neighbour neighbour(Specimen s) {

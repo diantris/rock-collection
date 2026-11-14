@@ -84,6 +84,8 @@ public class Specimen {
     @Column(nullable = false)
     private List<String> tags = new ArrayList<>();
     private String description;
+    /** A web page about this stone, usually on mindat.org; published as a link. */
+    private String mindatUrl;
     private String privateNotes;
 
     // Admin
@@ -210,6 +212,8 @@ public class Specimen {
     public void setTags(List<String> tags) { this.tags = tags; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public String getMindatUrl() { return mindatUrl; }
+    public void setMindatUrl(String mindatUrl) { this.mindatUrl = mindatUrl; }
     public String getPrivateNotes() { return privateNotes; }
     public void setPrivateNotes(String privateNotes) { this.privateNotes = privateNotes; }
     public boolean isPublished() { return published; }

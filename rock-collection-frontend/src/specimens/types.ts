@@ -228,6 +228,8 @@ export interface SpecimenDetail {
   currency: string | null;
   tags: string[];
   description: string | null;
+  /** A web page about this stone, usually on mindat.org; published as a link. */
+  mindatUrl: string | null;
   privateNotes: string | null;
   published: boolean;
   /** No longer in the collection: never published, whatever `published` says. */

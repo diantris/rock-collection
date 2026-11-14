@@ -43,7 +43,7 @@ interface ComponentDraft {
 const TEXT_FIELDS = [
   'name', 'marketName', 'treatmentNotes', 'color', 'secondaryColor', 'luster', 'transparency', 'streak',
   'cleavage', 'fracture', 'crystalHabit', 'inclusions', 'otherObservations', 'locality', 'country', 'acquiredFrom',
-  'acquiredCountry', 'currency', 'description', 'privateNotes',
+  'acquiredCountry', 'currency', 'description', 'mindatUrl', 'privateNotes',
 ] as const;
 const NUMBER_FIELDS = [
   'hardnessMin', 'hardnessMax', 'specificGravity', 'weightG', 'lengthMm', 'widthMm', 'heightMm',
@@ -91,7 +91,7 @@ const SECTIONS = {
   physical: ['hardnessMin', 'streak', 'specificGravity', 'cleavage', 'fracture', 'crystalHabit', 'specialProperties', 'otherObservations'],
   size: ['weightG', 'lengthMm', 'widthMm', 'heightMm'],
   provenance: ['locality', 'country', 'acquisitionType', 'acquiredFrom', 'acquiredCountry', 'acquiredYear', 'price'],
-  notes: ['description', 'privateNotes', 'treatmentNotes'],
+  notes: ['description', 'mindatUrl', 'privateNotes', 'treatmentNotes'],
 } as const;
 
 type NewMaterialOption = { newName: string };
@@ -411,6 +411,9 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
 
               {section('Notes', SECTIONS.notes, <>
                 {text('description', 'Public description', { multiline: true, minRows: 2, helperText: 'Can appear on the public page' })}
+                {text('mindatUrl', 'mindat.org link', {
+                  type: 'url', placeholder: 'https://www.mindat.org/…',
+                  helperText: 'Its page on mindat.org (or another site), for people who don’t know the stone. Can appear on the public page' })}
                 {text('privateNotes', 'Private notes', { multiline: true, minRows: 2, helperText: 'Never published' })}
                 {text('treatmentNotes', 'Treatment notes', { helperText: 'e.g. dyed, heated, stabilised' })}
               </>)}

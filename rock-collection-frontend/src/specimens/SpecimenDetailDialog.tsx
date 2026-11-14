@@ -2,7 +2,7 @@
 // Each section also lists what hasn't been recorded yet, as a nudge for measurements that would help identification.
 import React, { useEffect, useState } from 'react';
 import {
-  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography,
+  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Link, Stack, Typography,
   useMediaQuery, useTheme,
 } from '@mui/material';
 import { fetchSpecimen } from './api';
@@ -166,6 +166,9 @@ const SpecimenDetailDialog: React.FC<Props> = ({ specimenId, refreshKey = 0, onC
 
             <Section title="Notes" fields={[
               ['Public description', s.description],
+              ['mindat.org link', s.mindatUrl && (
+                <Link href={s.mindatUrl} target="_blank" rel="noopener noreferrer" sx={{ wordBreak: 'break-all' }}>{s.mindatUrl}</Link>
+              )],
               ['Private notes', s.privateNotes],
               ['Treatment', s.treatmentNotes],
               ['On the public site', s.gone ? 'No (no longer in your collection)' : s.published ? 'Yes' : 'No'],

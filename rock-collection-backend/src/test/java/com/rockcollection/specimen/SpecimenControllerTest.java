@@ -71,6 +71,15 @@ class SpecimenControllerTest {
     }
 
     @Test
+    void create_withALinkThatIsNotAWebAddress_returnsFieldError() throws Exception {
+        mockMvc.perform(post("/api/specimens").header("X-Rock-Collection", "1").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Zarinite\",\"mindatUrl\":\"javascript:alert(1)\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mindatUrl").value("must be a web address starting with http:// or https://"));
+        verifyNoInteractions(specimenService);
+    }
+
+    @Test
     void create_withUnknownEnumValue_returnsBadRequest() throws Exception {
         mockMvc.perform(post("/api/specimens").header("X-Rock-Collection", "1").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"X\",\"form\":\"PEBBLE\"}"))

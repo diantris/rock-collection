@@ -51,6 +51,7 @@ class SiteGeneratorTest {
         s.setCurrency("PLN");
         s.setTags(List.of("gift-from-mum"));
         s.setDescription("Found in a scrap box.\n\nHas a tiny geode.");
+        s.setMindatUrl("https://www.mindat.org/min-54558.html");
         s.setPrivateNotes("PRIVATE NOTE never to be published");
         Material orthoclase = new Material();
         orthoclase.setName("Orthoclase");
@@ -128,6 +129,28 @@ class SiteGeneratorTest {
         assertThat(generate(DEFAULTS, List.of(s), Map.of()).get("specimens/7/index.html")).doesNotContain("javascript:");
         assertThat(generate(DEFAULTS, List.of(fullSpecimen()), Map.of()).get("specimens/7/index.html"))
                 .contains("href=\"https://www.mindat.org/min-3417.html\"");
+    }
+
+    @Test
+    void specimenLink_isPublishedInNotesUnlessUnticked_andOnlyAsAWebLink() {
+        String page = generate(DEFAULTS, List.of(fullSpecimen()), Map.of()).get("specimens/7/index.html");
+        assertThat(page).contains("<h2 id=\"notes-title\">Notes</h2>",
+                "<a href=\"https://www.mindat.org/min-54558.html\" rel=\"noopener noreferrer\">More about it on mindat.org</a>");
+
+        Set<PublishField> noLink = EnumSet.copyOf(DEFAULTS);
+        noLink.remove(PublishField.MINDAT_LINK);
+        assertThat(generate(noLink, List.of(fullSpecimen()), Map.of()).get("specimens/7/index.html")).doesNotContain("min-54558");
+
+        Specimen other = fullSpecimen();
+        other.setMindatUrl("https://example.org/stones/zarinite");
+        assertThat(generate(DEFAULTS, List.of(other), Map.of()).get("specimens/7/index.html"))
+                .contains(">https://example.org/stones/zarinite</a>");
+
+        Specimen bad = fullSpecimen();
+        bad.setMindatUrl("javascript:alert(1)");
+        bad.setDescription(null);
+        assertThat(generate(DEFAULTS, List.of(bad), Map.of()).get("specimens/7/index.html"))
+                .doesNotContain("javascript:", "notes-title");
     }
 
     @Test

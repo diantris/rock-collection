@@ -85,7 +85,8 @@ class DatabaseIntegrationTest {
                  "specialProperties": ["FLUORESCENT"], "opticalEffects": ["IRIDESCENCE"],
                  "acquisitionType": "BOUGHT", "acquiredFrom": "Mineral fair, Kraków", "acquiredCountry": "Poland",
                  "acquiredYear": 2024, "acquiredMonth": 5, "price": 1,
-                 "tags": ["combo", "weird"], "privateNotes": "1 PLN from the scrap box"}
+                 "tags": ["combo", "weird"], "mindatUrl": " https://www.mindat.org/min-54558.html ",
+                 "privateNotes": "1 PLN from the scrap box"}
                 """.formatted(materialId("Orthoclase"), materialId("Amethyst")), SpecimenDto.Request.class);
 
         SpecimenDto.Detail created = specimenService.create(request);
@@ -97,6 +98,7 @@ class DatabaseIntegrationTest {
         assertThat(fetched.opticalEffects()).containsExactly(OpticalEffect.IRIDESCENCE);
         assertThat(fetched.tags()).containsExactly("combo", "weird");
         assertThat(fetched.currency()).isEqualTo("PLN");
+        assertThat(fetched.mindatUrl()).isEqualTo("https://www.mindat.org/min-54558.html");
         assertThat(fetched.createdAt()).isNotNull();
         assertThat(fetched.components()).extracting(SpecimenDto.Component::materialName).containsExactly("Orthoclase", "Amethyst");
         assertThat(specimenService.findAllTags()).contains("combo", "weird");

@@ -42,6 +42,32 @@ test('Clicking a row opens the details; editing hardness with a decimal comma sa
   }
 });
 
+test('A specimen can link to its mindat.org page; anything but a web address is refused', async ({ page, request }) => {
+  const specimen = await createSpecimen(request, { name: `Link test ${Date.now()}` });
+  const url = 'https://www.mindat.org/min-54558.html';
+  try {
+    await page.goto('/');
+    await page.getByRole('button', { name: '#' }).click();
+    await page.getByRole('button', { name: '#' }).click(); // newest first
+    await page.getByRole('row', { name: new RegExp(specimen.name) }).click();
+    await page.getByRole('dialog', { name: new RegExp(`#${specimen.id}`) }).getByRole('button', { name: 'Edit' }).click();
+
+    const form = page.getByRole('dialog', { name: `Edit #${specimen.id}` });
+    await form.getByRole('button', { name: /Notes/ }).click();
+    const link = form.getByRole('textbox', { name: 'mindat.org link' });
+    await link.fill('mindat zarinite');
+    await form.getByRole('button', { name: 'Save' }).click();
+    await expect(form.getByText('must be a web address starting with http:// or https://', { exact: true })).toBeVisible();
+
+    await link.fill(url);
+    await form.getByRole('button', { name: 'Save' }).click();
+    const notes = page.getByRole('dialog', { name: new RegExp(`#${specimen.id}`) }).getByRole('region', { name: 'Notes' });
+    await expect(notes.getByRole('link', { name: url })).toHaveAttribute('href', url);
+  } finally {
+    await request.delete(`${API}/specimens/${specimen.id}`);
+  }
+});
+
 test('A stone marked as no longer in the collection is greyed out and kept off the public site', async ({ page, request }) => {
   const specimen = await createSpecimen(request, { name: `Gone test ${Date.now()}` });
   try {

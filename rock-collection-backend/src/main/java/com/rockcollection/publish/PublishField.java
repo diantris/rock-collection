@@ -38,6 +38,7 @@ public enum PublishField {
     PRICE("Price", Group.ORIGIN, false),
 
     DESCRIPTION("Public description", Group.NOTES, true),
+    MINDAT_LINK("mindat.org link", Group.NOTES, true),
     TAGS("Tags", Group.NOTES, false);
 
     /** Headings the checkboxes are grouped under; they match the sections of a specimen page. */

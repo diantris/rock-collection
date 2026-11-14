@@ -69,7 +69,7 @@ public final class SpecimenDto {
             String locality, String country,
             AcquisitionType acquisitionType, String acquiredFrom, String acquiredCountry,
             Integer acquiredYear, Integer acquiredMonth, Integer acquiredDay, BigDecimal price, String currency,
-            List<String> tags, String description, String privateNotes,
+            List<String> tags, String description, String mindatUrl, String privateNotes,
             boolean published, boolean gone, Instant createdAt, Instant updatedAt) {
         static Detail from(Specimen s) {
             return new Detail(s.getId(), s.getName(), s.getMarketName(),
@@ -84,7 +84,7 @@ public final class SpecimenDto {
                     s.getLocality(), s.getCountry(),
                     s.getAcquisitionType(), s.getAcquiredFrom(), s.getAcquiredCountry(),
                     s.getAcquiredYear(), s.getAcquiredMonth(), s.getAcquiredDay(), s.getPrice(), s.getCurrency(),
-                    List.copyOf(s.getTags()), s.getDescription(), s.getPrivateNotes(),
+                    List.copyOf(s.getTags()), s.getDescription(), s.getMindatUrl(), s.getPrivateNotes(),
                     s.isPublished(), s.isGone(), s.getCreatedAt(), s.getUpdatedAt());
         }
     }
@@ -117,7 +117,9 @@ public final class SpecimenDto {
             @PositiveOrZero @Digits(integer = 8, fraction = 2) BigDecimal price,
             @Pattern(regexp = "([A-Z]{3})?", message = "currency must be a 3-letter ISO code, e.g. PLN") String currency,
             List<@Size(max = 64) String> tags,
-            String description, String privateNotes,
+            String description,
+            @Size(max = 512) @Pattern(regexp = "\\s*(https?://\\S+)?\\s*", message = "must be a web address starting with http:// or https://") String mindatUrl,
+            String privateNotes,
             Boolean published, Boolean gone) {
     }
 }

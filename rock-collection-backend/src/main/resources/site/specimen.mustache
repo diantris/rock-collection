@@ -78,12 +78,13 @@
   </section>
   {{/sections}}
 
-  {{#hasDescription}}
-  <section class="panel" aria-labelledby="description-title">
-    <h2 id="description-title">Description</h2>
+  {{#hasNotes}}
+  <section class="panel" aria-labelledby="notes-title">
+    <h2 id="notes-title">Notes</h2>
     {{#description}}<p>{{.}}</p>{{/description}}
+    {{#link}}<p><a href="{{href}}" rel="noopener noreferrer">{{text}}</a></p>{{/link}}
   </section>
-  {{/hasDescription}}
+  {{/hasNotes}}
 
   <aside class="callout">Know what this is, or have an idea? Please mention <strong>specimen #{{id}}</strong> when you reply.</aside>
 
