@@ -85,24 +85,25 @@ const SpecimenDetailDialog: React.FC<Props> = ({ specimenId, refreshKey = 0, onC
     <Dialog open={specimenId !== null} onClose={onClose} maxWidth="md" fullWidth fullScreen={fullScreen} aria-labelledby="specimen-detail-title">
       <DialogTitle id="specimen-detail-title">
         {s ? `#${s.id} ${s.name}` : `#${specimenId ?? ''}`}
-        {s?.marketName && (
-          <Typography component="span" variant="body2" sx={{ display: 'block', color: 'text.secondary' }}>Sold as “{s.marketName}”</Typography>
-        )}
       </DialogTitle>
       <DialogContent>
         {error && <Alert severity="error">{error}</Alert>}
         {!s && !error && <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>}
         {s && (
           <>
-            {s.gone && (
-              <Alert severity="info" sx={{ mb: 2 }}>No longer in your collection. It’s left off the public site from your next publish.</Alert>
-            )}
+            {/* Name, then why it's special, then the (often silly) market name */}
             {s.whySpecial && (
               <Box component="section" aria-label="Why it’s special"
-                sx={{ mb: 2, px: 2, py: 1.5, borderRadius: 3, bgcolor: 'm3.secondaryContainer', color: 'm3.onSecondaryContainer' }}>
+                sx={{ mb: 1.5, px: 2, py: 1.5, borderRadius: 3, bgcolor: 'm3.secondaryContainer', color: 'm3.onSecondaryContainer' }}>
                 <Typography variant="overline" component="h3" sx={{ lineHeight: 1.5, opacity: 0.8 }}>Why it’s special</Typography>
                 <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>{s.whySpecial}</Typography>
               </Box>
+            )}
+            {s.marketName && (
+              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>Sold as “{s.marketName}”</Typography>
+            )}
+            {s.gone && (
+              <Alert severity="info" sx={{ mb: 2 }}>No longer in your collection. It’s left off the public site from your next publish.</Alert>
             )}
             {s.tags.length > 0 && (
               <Stack direction="row" sx={{ gap: 0.5, flexWrap: 'wrap', mb: 2 }}>

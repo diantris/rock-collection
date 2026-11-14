@@ -66,8 +66,8 @@ export const COLUMNS: ColumnDef[] = [
     // The chip goes first, so it's always at the start of the name
     render: s => s.gone ? <><Chip size="small" variant="outlined" label="Gone" sx={{ mr: 1 }} />{s.name}</> : s.name,
   },
-  { id: 'marketName', label: 'Market name', sortKey: 'marketName', defaultVisible: true, width: 220, render: s => orUnknown(s.marketName) },
   { id: 'whySpecial', label: 'Why it’s special', defaultVisible: false, width: 280, render: s => s.whySpecial ?? <Unknown text="—" /> },
+  { id: 'marketName', label: 'Market name', sortKey: 'marketName', defaultVisible: true, width: 220, render: s => orUnknown(s.marketName) },
   { id: 'materials', label: 'Scientific identity', defaultVisible: false, width: 280, render: s => <ComponentChips components={s.components} /> },
   { id: 'type', label: 'Type', defaultVisible: true, width: 120, render: s => orUnknown(s.nature && NATURE_TYPE_LABELS[s.nature]) },
   { id: 'family', label: 'Family', defaultVisible: true, width: 150, render: s => orUnknown(s.family && FAMILY_LABELS[s.family]) },

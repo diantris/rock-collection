@@ -10,13 +10,13 @@
   <header class="specimen-header">
     <p class="specimen-number">Specimen #{{id}}</p>
     <h1>{{name}}</h1>
-    {{#marketName}}<p class="sold-as">Sold as “{{.}}”</p>{{/marketName}}
     {{#hasWhySpecial}}
     <div class="why-special">
       <p class="why-special-label">Why it’s special</p>
       {{#whySpecial}}<p>{{.}}</p>{{/whySpecial}}
     </div>
     {{/hasWhySpecial}}
+    {{#marketName}}<p class="sold-as">Sold as “{{.}}”</p>{{/marketName}}
     {{#hasTags}}
     <ul class="tags" aria-label="Tags">{{#tags}}<li class="chip">{{.}}</li>{{/tags}}</ul>
     {{/hasTags}}

@@ -172,7 +172,9 @@ class SiteGeneratorTest {
     void whySpecial_isShownUnderTheNameUnlessUnticked() {
         String page = generate(DEFAULTS, List.of(fullSpecimen()), Map.of()).get("specimens/7/index.html");
         assertThat(page).contains("Why it’s special", "<p>Looks like a tiny frog.</p>", "<p>My sister found it.</p>");
-        assertThat(page.indexOf("Looks like a tiny frog")).isLessThan(page.indexOf("No photos yet")); // under the name
+        // Under the name, before the market name
+        assertThat(page.indexOf("Looks like a tiny frog")).isGreaterThan(page.indexOf("<h1>"))
+                .isLessThan(page.indexOf("Sold as"));
 
         Set<PublishField> without = EnumSet.copyOf(DEFAULTS);
         without.remove(PublishField.WHY_SPECIAL);
