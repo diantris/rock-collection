@@ -196,6 +196,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
 - **Table columns** are defined in `specimens/columns.tsx` (`COLUMNS`).
   - Shown by default: #, Photo, Name, Market name, Type, Family, Where I got it.
   - `ColumnPicker` lets the user choose others. The choice is saved in `localStorage`, per browser.
+  - **Widths and wrapping:** every column has a starting `width` in `COLUMNS`, and text and chips (`wrappingChipSx`) wrap within it, so a row grows taller rather than cutting anything off. `ColumnResizer` (a `separator` on each header cell's right edge, "Resize {label} column") changes a column's width by dragging or the arrow keys, and a double-click resets it. The widths are saved in `localStorage` per browser (`loadColumnWidths`). # and Photo are `fixedWidth`. The table uses `table-layout: fixed`, and the actions column takes up any room left over. Header cells carry their own `aria-label`, or the handle's name would become part of the header's name.
   - #, Photo and Name are frozen on the left, and the table scrolls sideways. The page fills the window and only the table scrolls, so the header row (`stickyHeader`) stays in view.
   - **Pins:** the first column is always the pin button ("Pin {name}", `aria-pressed`), outside the column picker. Unsorted, the table shows pinned stones first, then by name; clicking a column sorts by it (ascending, descending, then a third click goes back to the default order).
   - The optional "Scientific identity" column shows materials as chips: filled when confirmed, outlined when tentative.
@@ -228,7 +229,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
 - **MUI 9 removed system props** (`<Stack gap={2}>`, `<Box display="flex">`). Put style values in `sx` instead.
 - Playwright tests select elements by role and accessible name. Keep these names stable, or update `test/*.spec.ts` along with them:
   - the heading "Rock Collection"
-  - the table's "Pin {name}" buttons
+  - the table's "Pin {name}" buttons and "Resize {label} column" separators
   - the table "Specimens"
   - the buttons "Add a specimen", "Add & next", "Delete {name}" and "Publish"; the dialog "Publish the public site" with the regions "Specimens on the site" and "Fields to publish" (a group per section), "Show all specimens" and the intro textbox
   - the dialogs "Add a specimen", "Edit #{id}", "#{id} {name}" and "Add a material"

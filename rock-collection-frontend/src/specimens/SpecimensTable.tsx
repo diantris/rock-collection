@@ -16,21 +16,26 @@ import AddMaterialDialog from './AddMaterialDialog';
 import PublishDialog from './PublishDialog';
 import DeleteSpecimenDialog from './DeleteSpecimenDialog';
 import ColumnPicker from './ColumnPicker';
-import { COLUMNS, ColumnDef, loadVisibleColumns, saveVisibleColumns } from './columns';
+import ColumnResizer from './ColumnResizer';
+import { COLUMNS, ColumnDef, loadColumnWidths, loadVisibleColumns, saveColumnWidths, saveVisibleColumns } from './columns';
 import { Order, Page, Photo, SpecimenSortKey, SpecimenSummary } from './types';
 
 /** Width of the pin column, always the first one, frozen on the left. */
 const PIN_WIDTH = 48;
 
+/** Width of the actions (delete) column, always the last one. */
+const ACTIONS_WIDTH = 56;
+
 /**
- * Styles freezing a column on the left while the rest of the table scrolls sideways. Header cells also stick to the
- * top (the table's `stickyHeader`), so they need an opaque background; frozen header cells sit above everything.
+ * Cell styles: text and chips wrap within the column's width. A frozen column (`left` given) stays on the left while
+ * the rest scrolls sideways. Header cells also stick to the top (the table's `stickyHeader`), so they need an opaque
+ * background; frozen header cells sit above everything.
  */
-function stickySx(width: number | undefined, left: number | undefined, header: boolean): SxProps<Theme> {
-  if (left === undefined) return { whiteSpace: 'nowrap', ...(header && { bgcolor: 'background.paper' }) };
+function cellSx(width: number | undefined, left: number | undefined, header: boolean): SxProps<Theme> {
   return {
-    position: 'sticky', left, zIndex: header ? 3 : 1, width, minWidth: width, maxWidth: width,
-    bgcolor: 'background.paper', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+    width, minWidth: width, maxWidth: width, whiteSpace: 'normal', overflowWrap: 'anywhere',
+    ...(header && { bgcolor: 'background.paper' }),
+    ...(left !== undefined && { position: 'sticky', left, zIndex: header ? 3 : 1, bgcolor: 'background.paper' }),
   };
 }
 
@@ -56,7 +61,23 @@ const SpecimensTable: React.FC = () => {
   // Gallery opened straight from a table photo
   const [gallery, setGallery] = useState<{ name: string; photos: Photo[] } | null>(null);
 
-  useEffect(() => setVisibleIds(loadVisibleColumns()), []);
+  // Widths the user dragged, by column id (the rest use their starting width); saved in this browser
+  const [widths, setWidths] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    setVisibleIds(loadVisibleColumns());
+    setWidths(loadColumnWidths());
+  }, []);
+
+  const widthOf = useCallback((col: ColumnDef) => widths[col.id] ?? col.width, [widths]);
+  const resize = (col: ColumnDef, width: number | null, save: boolean) => {
+    setWidths(prev => {
+      const next = { ...prev };
+      if (width === null) delete next[col.id]; else next[col.id] = width;
+      if (save) saveColumnWidths(next);
+      return next;
+    });
+  };
 
   const load = useCallback(() => {
     fetchSpecimens(page, rowsPerPage, sortBy, order)
@@ -75,10 +96,11 @@ const SpecimensTable: React.FC = () => {
     for (const col of columns) {
       if (!col.sticky) continue;
       offsets[col.id] = left;
-      left += col.width ?? 0;
+      left += widthOf(col);
     }
     return offsets;
-  }, [columns]);
+  }, [columns, widthOf]);
+  const tableWidth = PIN_WIDTH + columns.reduce((sum, col) => sum + widthOf(col), 0) + ACTIONS_WIDTH;
 
   const handleColumnsChange = (ids: string[]) => {
     setVisibleIds(ids);
@@ -138,16 +160,18 @@ const SpecimensTable: React.FC = () => {
       <Paper variant="outlined" sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {/* Scrolls both ways; the header row and the frozen columns stay put */}
         <TableContainer sx={{ flex: 1, overflow: 'auto' }}>
-          <Table aria-label="Specimens" size="small" stickyHeader>
+          {/* Fixed layout: columns are exactly as wide as set; the actions column takes up any room left over */}
+          <Table aria-label="Specimens" size="small" stickyHeader sx={{ tableLayout: 'fixed', width: tableWidth, minWidth: '100%' }}>
             <TableHead>
               <TableRow>
-                <TableCell aria-label="Pinned" sx={stickySx(PIN_WIDTH, 0, true)}>
+                <TableCell aria-label="Pinned" sx={cellSx(PIN_WIDTH, 0, true)}>
                   <Tooltip title="Pinned stones come first, until you sort by a column">
                     <PushPinOutlinedIcon fontSize="small" sx={{ display: 'block', mx: 'auto' }} />
                   </Tooltip>
                 </TableCell>
                 {columns.map(col => (
-                  <TableCell key={col.id} sx={stickySx(col.width, stickyLeft[col.id], true)}
+                  // Its own label, or the resize handle's name would become part of the header's name
+                  <TableCell key={col.id} aria-label={col.label} sx={cellSx(widthOf(col), stickyLeft[col.id], true)}
                     sortDirection={col.sortKey && sortBy === col.sortKey ? order : false}>
                     {col.sortKey ? (
                       <TableSortLabel
@@ -158,9 +182,13 @@ const SpecimensTable: React.FC = () => {
                         {col.label}
                       </TableSortLabel>
                     ) : col.label}
+                    {!col.fixedWidth && (
+                      <ColumnResizer label={col.label} width={widthOf(col)}
+                        onResize={(w, done) => resize(col, w, done)} onReset={() => resize(col, null, true)} />
+                    )}
                   </TableCell>
                 ))}
-                <TableCell aria-label="Actions" sx={stickySx(undefined, undefined, true)} />
+                <TableCell aria-label="Actions" sx={{ minWidth: ACTIONS_WIDTH, bgcolor: 'background.paper' }} />
               </TableRow>
             </TableHead>
             <TableBody>
@@ -176,7 +204,7 @@ const SpecimensTable: React.FC = () => {
               )}
               {data?.content.map(s => (
                 <TableRow key={s.id} hover onClick={() => setDetailId(s.id)} sx={[{ cursor: 'pointer' }, s.gone && goneRowSx]}>
-                  <TableCell padding="none" align="center" sx={stickySx(PIN_WIDTH, 0, false)}>
+                  <TableCell padding="none" align="center" sx={cellSx(PIN_WIDTH, 0, false)}>
                     <Tooltip title={s.pinned ? 'Unpin' : 'Pin to the top'}>
                       <IconButton aria-label={`Pin ${s.name}`} aria-pressed={s.pinned} size="small"
                         onClick={e => { e.stopPropagation(); togglePin(s); }}
@@ -186,8 +214,7 @@ const SpecimensTable: React.FC = () => {
                     </Tooltip>
                   </TableCell>
                   {columns.map(col => (
-                    <TableCell key={col.id} sx={stickySx(col.width, stickyLeft[col.id], false)}
-                      title={col.id === 'name' ? s.name : undefined}>
+                    <TableCell key={col.id} sx={cellSx(widthOf(col), stickyLeft[col.id], false)}>
                       {cell(col, s)}
                     </TableCell>
                   ))}

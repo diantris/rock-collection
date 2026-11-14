@@ -113,7 +113,8 @@ h2 { font-size: 1rem; line-height: 1.5rem; font-weight: 500; letter-spacing: 0.1
 /* ---- chips ------------------------------------------------------------------------------------------------------ */
 
 .chip {
-  display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border-radius: 8px;
+  /* min-height, not height: a long label wraps onto more lines instead of spilling out */
+  display: inline-flex; align-items: center; min-height: 32px; padding: 4px 12px; border-radius: 8px; overflow-wrap: anywhere;
   border: 1px solid var(--md-outline); background: transparent; color: var(--md-on-surface-variant);
   font-family: inherit; font-size: 0.875rem; font-weight: 500; letter-spacing: 0.1px;
 }

@@ -89,6 +89,51 @@ test('"Why it’s special" sits under the name in the form and at the top of the
   }
 });
 
+test('Columns can be resized (and reset); long text wraps instead of being cut off', async ({ page, request }) => {
+  const specimen = await createSpecimen(request, {
+    name: `Wrap test ${Date.now()}`, marketName: '"Herkimer Diamond Cabochon" (just quoting the seller, who was very sure about it)',
+  });
+  try {
+    await page.goto('/');
+    await page.evaluate(() => window.localStorage.removeItem('specimenTable.columnWidths'));
+    await page.reload();
+    const table = page.getByRole('table', { name: 'Specimens' });
+    await expect(table.getByRole('columnheader', { name: 'Name', exact: true })).toBeVisible();
+    const header = table.getByRole('columnheader', { name: 'Market name' });
+    const handle = page.getByRole('separator', { name: 'Resize Market name column' });
+    await expect(handle).toHaveAttribute('aria-valuenow', '220');
+    expect(await table.getByRole('separator', { name: 'Resize # column' }).count()).toBe(0); // # keeps its width
+
+    // Keyboard: three steps wider; it's remembered after a reload
+    await handle.focus();
+    for (let i = 0; i < 3; i++) await handle.press('ArrowRight');
+    await expect(handle).toHaveAttribute('aria-valuenow', '280');
+    expect(Math.round((await header.boundingBox())!.width)).toBe(280);
+    await page.reload();
+    await expect(page.getByRole('separator', { name: 'Resize Market name column' })).toHaveAttribute('aria-valuenow', '280');
+
+    // Mouse: drag the edge narrower; the long market name wraps onto more lines
+    await page.getByRole('button', { name: '#' }).click();
+    await page.getByRole('button', { name: '#' }).click(); // newest first
+    const cellText = page.getByRole('row', { name: new RegExp(specimen.name) }).getByText(/Herkimer/);
+    const oneLine = (await cellText.boundingBox())!.height;
+    const box = (await page.getByRole('separator', { name: 'Resize Market name column' }).boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 - 160, box.y + box.height / 2, { steps: 5 });
+    await page.mouse.up();
+    await expect(page.getByRole('separator', { name: 'Resize Market name column' })).toHaveAttribute('aria-valuenow', '120');
+    expect((await cellText.boundingBox())!.height).toBeGreaterThan(oneLine * 2);
+
+    // Double-click goes back to the starting width
+    await page.getByRole('separator', { name: 'Resize Market name column' }).dblclick();
+    await expect(page.getByRole('separator', { name: 'Resize Market name column' })).toHaveAttribute('aria-valuenow', '220');
+  } finally {
+    await page.evaluate(() => window.localStorage.removeItem('specimenTable.columnWidths'));
+    await request.delete(`${API}/specimens/${specimen.id}`);
+  }
+});
+
 test('A specimen can link to its mindat.org page; anything but a web address is refused', async ({ page, request }) => {
   const specimen = await createSpecimen(request, { name: `Link test ${Date.now()}` });
   const url = 'https://www.mindat.org/min-54558.html';
