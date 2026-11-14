@@ -9,6 +9,8 @@ import com.rockcollection.photo.PhotoService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,9 +60,10 @@ public class SpecimenService {
      * One page of specimens.
      * @param sortKey one of {@link #SORTABLE}, or null (or an unknown key) for the default order: pinned specimens
      *                first, then by name, ignoring {@code direction}
+     * @param query   optional search text: part of the name or market name (ignoring case), or a number ("142", "#142")
      */
     @Transactional(readOnly = true)
-    public PageResponse<SpecimenDto.Summary> findPage(int page, int size, String sortKey, Sort.Direction direction) {
+    public PageResponse<SpecimenDto.Summary> findPage(int page, int size, String sortKey, Sort.Direction direction, String query) {
         String property = sortKey == null ? null : SORTABLE.get(sortKey); // Map.of refuses null keys
         // Then by name, then id, so rows sharing a value (or null) are in a sensible, stable order across pages
         Sort sort = property == null
@@ -69,7 +72,10 @@ public class SpecimenService {
                 ? Sort.by(new Sort.Order(direction, "name"), Sort.Order.asc("id"))
                 : Sort.by(new Sort.Order(direction, property).nullsLast(), Sort.Order.asc("name"), Sort.Order.asc("id"));
         PageRequest pageRequest = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, MAX_PAGE_SIZE), sort);
-        Page<Specimen> result = specimenRepository.findAll(pageRequest);
+        String search = query == null ? "" : query.strip();
+        Page<Specimen> result = search.isEmpty()
+                ? specimenRepository.findAll(pageRequest)
+                : specimenRepository.findAll(matching(search), pageRequest);
         Map<Long, Long> thumbnails = photoService.thumbnailVersions(result.getContent().stream().map(Specimen::getId).toList());
         return PageResponse.from(result, s -> SpecimenDto.Summary.from(s, thumbnails.get(s.getId())));
     }
@@ -77,6 +83,29 @@ public class SpecimenService {
     @Transactional(readOnly = true)
     public SpecimenDto.Detail findById(Long id) {
         return SpecimenDto.Detail.from(get(id));
+    }
+
+    /** Specimens whose name or market name contains {@code text} (ignoring case), or whose number it is. */
+    static Specification<Specimen> matching(String text) {
+        String pattern = "%" + text.toLowerCase(Locale.ROOT)
+                .replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"; // typed % and _ match themselves
+        Long number = text.matches("#?\\d{1,18}") ? Long.valueOf(text.replace("#", "")) : null;
+        return (root, cq, cb) -> {
+            List<Predicate> any = new ArrayList<>(List.of(
+                    cb.like(cb.lower(root.get("name")), pattern, '\\'),
+                    cb.like(cb.lower(root.get("marketName")), pattern, '\\')));
+            if (number != null) any.add(cb.equal(root.get("id"), number));
+            return cb.or(any.toArray(Predicate[]::new));
+        };
+    }
+
+    /** Every "where I got it" in use, most recently used first; spellings differing only in case are listed once. */
+    @Transactional(readOnly = true)
+    public List<String> findRecentAcquiredFrom() {
+        Set<String> seen = new HashSet<>();
+        return specimenRepository.findAcquiredFromByMostRecent().stream()
+                .filter(v -> seen.add(v.toLowerCase(Locale.ROOT)))
+                .toList();
     }
 
     /** All tags in use, for autocomplete. */

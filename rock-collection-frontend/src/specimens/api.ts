@@ -35,10 +35,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.status === 204 ? (undefined as T) : res.json();
 }
 
-/** One page of specimens; `page` is zero-based. Without a sort key: pinned specimens first, then by name. */
-export function fetchSpecimens(page: number, size: number, sort: SpecimenSortKey | null, direction: Order): Promise<Page<SpecimenSummary>> {
+/**
+ * One page of specimens; `page` is zero-based. Without a sort key: pinned specimens first, then by name.
+ * `query` keeps only specimens whose name or market name contains it, or whose number it is ("142" or "#142").
+ */
+export function fetchSpecimens(
+  page: number, size: number, sort: SpecimenSortKey | null, direction: Order, query = '',
+): Promise<Page<SpecimenSummary>> {
   const params = new URLSearchParams({ page: String(page), size: String(size), direction });
   if (sort) params.set('sort', sort);
+  if (query.trim()) params.set('q', query.trim());
   return request(`/api/specimens?${params}`);
 }
 
@@ -67,6 +73,11 @@ export function deleteSpecimen(id: number): Promise<void> {
 /** All tags in use, for autocomplete. */
 export function fetchTags(): Promise<string[]> {
   return request('/api/specimens/tags');
+}
+
+/** Every "where I got it" already used, most recently used first, for the form's suggestions. */
+export function fetchAcquiredFrom(): Promise<string[]> {
+  return request('/api/specimens/acquired-from');
 }
 
 export function fetchMaterials(): Promise<Material[]> {

@@ -9,7 +9,7 @@ import {
 import AddPhotoAlternateOutlinedIcon from '@mui/icons-material/AddPhotoAlternateOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { ApiError, createSpecimen, fetchMaterials, fetchSpecimen, fetchTags, updateSpecimen, uploadPhotos } from './api';
+import { ApiError, createSpecimen, fetchAcquiredFrom, fetchMaterials, fetchSpecimen, fetchTags, updateSpecimen, uploadPhotos } from './api';
 import { PHOTO_TYPES } from './PhotosSection';
 import AddMaterialDialog from './AddMaterialDialog';
 import {
@@ -104,6 +104,8 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
   const [components, setComponents] = useState<ComponentDraft[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [knownTags, setKnownTags] = useState<string[]>([]);
+  /** Places already used for "where I got it", most recent first. */
+  const [knownPlaces, setKnownPlaces] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,6 +129,7 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
     setPhotoWarning(null);
     fetchMaterials().then(setMaterials).catch(() => setMaterials([]));
     fetchTags().then(setKnownTags).catch(() => setKnownTags([]));
+    fetchAcquiredFrom().then(setKnownPlaces).catch(() => setKnownPlaces([]));
     if (!isEdit) {
       setForm(emptyForm());
       setComponents([]);
@@ -231,10 +234,12 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
     );
   };
 
-  const suggest = (field: TextField_, label: string, options: string[]) => (
+  const suggest = (field: TextField_, label: string, options: string[], helperText?: string) => (
     <Autocomplete key={field} freeSolo fullWidth options={options} value={form[field]} inputValue={form[field]}
+      // Where I got it lists the recent places as soon as the field is clicked, so there's nothing to type
+      openOnFocus={field === 'acquiredFrom'}
       onInputChange={(_, v) => set(field, v)} onChange={(_, v) => set(field, v ?? '')}
-      renderInput={params => <TextField {...params} label={label} />} />
+      renderInput={params => <TextField {...params} label={label} helperText={helperText} />} />
   );
 
   function enumSelect<T extends string>(field: 'form' | 'nature' | 'acquisitionType', label: string, labels: Record<T, string>) {
@@ -402,7 +407,7 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
                 {row(text('locality', 'Locality', { helperText: 'Where it was (likely) mined' }), text('country', 'Country of origin'))}
                 {row(
                   enumSelect('acquisitionType', 'Source', ACQUISITION_LABELS),
-                  text('acquiredFrom', 'Where I got it', { helperText: 'Shop, fair, place or person' }),
+                  suggest('acquiredFrom', 'Where I got it', knownPlaces, 'Shop, fair, place or person; the latest ones are listed first'),
                   text('acquiredCountry', 'Country (where I got it)'),
                 )}
                 {row(

@@ -70,6 +70,7 @@ Keep data entry **low-friction**: sensible defaults, few required fields, no lon
 - a mindat.org link per specimen, in Notes; on the public page it's in the Notes panel with the description (Day 12)
 - "Why it's special" per specimen, under the name everywhere (Day 12)
 - pins (pinned stones top the table and the public site) and a default order by name; visitors can re-sort the site; the table's header row stays in view (Day 12)
+- a table search box (part of the name or market name, or the number) and recently used places for "Where I got it" (Day 12)
 
 **Not built yet:**
 - photo captions in the UI (the column exists, nothing edits it)
@@ -173,8 +174,9 @@ Unknown specimens are the main use case. The owner records measurements and obse
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/api/specimens?page=0&size=25&sort=name&direction=asc` | Returns `PageResponse<Summary>` (`content`, `page`, `size`, `totalElements`, `totalPages`). `size` is capped at 100. Sort keys are listed in `SpecimenService.SORTABLE`. Without `sort` (or with an unknown key) the order is pinned first, then by name. Ties are broken by name, then id. |
+| GET | `/api/specimens?page=0&size=25&sort=name&direction=asc&q=jasper` | Returns `PageResponse<Summary>` (`content`, `page`, `size`, `totalElements`, `totalPages`). `size` is capped at 100. Sort keys are listed in `SpecimenService.SORTABLE`. Without `sort` (or with an unknown key) the order is pinned first, then by name. Ties are broken by name, then id. Optional `q` keeps specimens whose name or market name contains it (ignoring case; `%` and `_` are literal) or whose number it is (`142` or `#142`). |
 | GET | `/api/specimens/tags` | Every tag in use, for autocomplete |
+| GET | `/api/specimens/acquired-from` | Every "where I got it" in use, most recently saved first, each spelling once ignoring case |
 | GET | `/api/specimens/{id}` | `Detail`, all fields including private ones |
 | POST / PUT | `/api/specimens[/{id}]` | `Request`. Only `name` is required. `components: [{materialId, role?, certainty?}]` replaces the whole list; `role` defaults to HOST and `certainty` to TENTATIVE. |
 | PUT | `/api/specimens/{id}/pinned` | Body `{pinned: true}`; 204. Changes nothing else. |
@@ -200,11 +202,13 @@ Unknown specimens are the main use case. The owner records measurements and obse
   - #, Photo and Name are frozen on the left, and the table scrolls sideways. The page fills the window and only the table scrolls, so the header row (`stickyHeader`) stays in view.
   - **Pins:** the first column is always the pin button ("Pin {name}", `aria-pressed`), outside the column picker. Unsorted, the table shows pinned stones first, then by name; clicking a column sorts by it (ascending, descending, then a third click goes back to the default order).
   - The optional "Scientific identity" column shows materials as chips: filled when confirmed, outlined when tentative.
+  - **Search** ("Search specimens", with "Clear search"; Escape clears too): searches on the server 300 ms after typing stops and goes back to page 1; only the latest request's answer is shown.
 - **Clicking a row** opens `SpecimenDetailDialog`. It shows every field grouped into sections, and each section lists its unrecorded fields ("Not recorded: …") as a nudge for measurements. Its Edit button opens `SpecimenFormDialog`.
 - **`SpecimenFormDialog`** handles both add and edit.
   - Name, "Why it’s special", market name, tags, form and nature are always visible. Everything else is in collapsible sections (`Accordion`), and each section header shows how many of its fields are filled.
   - Numbers accept decimal commas ("2,65").
   - Luster, transparency, streak, cleavage, fracture and habit offer suggestions from `suggestions.ts`, but free text is still allowed. Hardness has a scratch-test hint.
+  - "Where I got it" lists the places already used (`/acquired-from`), latest first, as soon as it's clicked. It's an Autocomplete, so its role is `combobox`, not `textbox`.
   - Typing a material that isn't on the list offers "Add … as a new material", which opens `AddMaterialDialog` pre-filled.
   - **"Add & next"** saves the specimen and resets the form for the next one. It keeps the source, where-I-got-it, date, currency and tags, for batch entry.
   - PUT replaces every field, so the form always sends the full request.
@@ -229,6 +233,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
 - **MUI 9 removed system props** (`<Stack gap={2}>`, `<Box display="flex">`). Put style values in `sx` instead.
 - Playwright tests select elements by role and accessible name. Keep these names stable, or update `test/*.spec.ts` along with them:
   - the heading "Rock Collection"
+  - the searchbox "Search specimens" and the button "Clear search"
   - the table's "Pin {name}" buttons and "Resize {label} column" separators
   - the table "Specimens"
   - the buttons "Add a specimen", "Add & next", "Delete {name}" and "Publish"; the dialog "Publish the public site" with the regions "Specimens on the site" and "Fields to publish" (a group per section), "Show all specimens" and the intro textbox

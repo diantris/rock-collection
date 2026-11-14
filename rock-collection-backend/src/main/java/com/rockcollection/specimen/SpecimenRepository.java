@@ -2,17 +2,23 @@
 package com.rockcollection.specimen;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 
-public interface SpecimenRepository extends JpaRepository<Specimen, Long> {
+public interface SpecimenRepository extends JpaRepository<Specimen, Long>, JpaSpecificationExecutor<Specimen> {
     /** Every tag used on any specimen, alphabetically (for autocomplete). */
     @Query(value = "SELECT DISTINCT t FROM specimen, unnest(tags) AS t ORDER BY t", nativeQuery = true)
     List<String> findAllTags();
 
-    /** The specimens that appear on the public site, by number: marked public and still in the collection. */
+    /** Every "where I got it" in use, the most recently saved first (for the form's suggestions). */
+    @Query(value = """
+            SELECT acquired_from FROM specimen WHERE acquired_from IS NOT NULL
+            GROUP BY acquired_from ORDER BY max(coalesce(updated_at, created_at)) DESC, acquired_from""", nativeQuery = true)
+    List<String> findAcquiredFromByMostRecent();
+
     /** What publishing exports, in the table's default order: pinned first, then by name. */
     List<Specimen> findByPublishedTrueAndGoneFalseOrderByPinnedDescNameAscIdAsc();
 

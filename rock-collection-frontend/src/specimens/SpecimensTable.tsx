@@ -1,10 +1,13 @@
 // SpecimensTable.tsx - Paginated, server-sorted specimen table with selectable columns, pins and add/delete actions.
 // Unsorted, pinned specimens come first, then by name; clicking a column sorts by it (a third click goes back).
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+// The search box filters by part of the name or market name, or by number, on the server, so paging still works.
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Box, Button, ButtonBase, CircularProgress, IconButton, Paper, Stack, SxProps, Table, TableBody, TableCell,
-  TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Theme, Tooltip, Typography,
+  Alert, Box, Button, ButtonBase, CircularProgress, IconButton, InputAdornment, Paper, Stack, SxProps, Table, TableBody,
+  TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, TextField, Theme, Tooltip, Typography,
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import SearchIcon from '@mui/icons-material/Search';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
@@ -19,6 +22,9 @@ import ColumnPicker from './ColumnPicker';
 import ColumnResizer from './ColumnResizer';
 import { COLUMNS, ColumnDef, loadColumnWidths, loadVisibleColumns, saveColumnWidths, saveVisibleColumns } from './columns';
 import { Order, Page, Photo, SpecimenSortKey, SpecimenSummary } from './types';
+
+/** How long typing must pause before the table searches. */
+const SEARCH_DELAY_MS = 300;
 
 /** Width of the pin column, always the first one, frozen on the left. */
 const PIN_WIDTH = 48;
@@ -49,6 +55,10 @@ const SpecimensTable: React.FC = () => {
   // null: the default order (pinned first, then by name)
   const [sortBy, setSortBy] = useState<SpecimenSortKey | null>(null);
   const [order, setOrder] = useState<Order>('asc');
+  // What's typed in the search box, and what the table last searched for (after a short pause in typing)
+  const [searchText, setSearchText] = useState('');
+  const [query, setQuery] = useState('');
+  const requestNo = useRef(0);
   // Defaults on first render (matches server rendering), then the saved choice from this browser
   const [visibleIds, setVisibleIds] = useState(() => COLUMNS.filter(c => c.defaultVisible).map(c => c.id));
   // Form dialog: closed (null), adding ('new') or editing a specimen id
@@ -80,12 +90,23 @@ const SpecimensTable: React.FC = () => {
   };
 
   const load = useCallback(() => {
-    fetchSpecimens(page, rowsPerPage, sortBy, order)
-      .then(result => { setData(result); setError(null); })
-      .catch(err => setError(err.message));
-  }, [page, rowsPerPage, sortBy, order]);
+    // Only the latest request counts, so a slow answer for an older search can't overwrite a newer one
+    const no = ++requestNo.current;
+    fetchSpecimens(page, rowsPerPage, sortBy, order, query)
+      .then(result => { if (no === requestNo.current) { setData(result); setError(null); } })
+      .catch(err => { if (no === requestNo.current) setError(err.message); });
+  }, [page, rowsPerPage, sortBy, order, query]);
 
   useEffect(load, [load]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchText.trim() === query) return;
+      setQuery(searchText.trim());
+      setPage(0);
+    }, SEARCH_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [searchText, query]);
 
   const columns = useMemo(() => COLUMNS.filter(c => visibleIds.includes(c.id)), [visibleIds]);
 
@@ -149,6 +170,26 @@ const SpecimensTable: React.FC = () => {
       <Stack direction="row" sx={{ gap: 2, mb: 2, flexWrap: 'wrap' }}>
         <Button variant="contained" onClick={() => setFormTarget('new')}>Add a specimen</Button>
         <Button variant="outlined" onClick={() => setAddMaterialOpen(true)}>Add a material</Button>
+        <TextField
+          type="search" size="small" placeholder="Name or number" value={searchText}
+          onChange={e => setSearchText(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Escape') setSearchText(''); }}
+          sx={{ width: { xs: '100%', sm: 280 }, '& input::-webkit-search-cancel-button': { display: 'none' } }}
+          slotProps={{
+            htmlInput: { 'aria-label': 'Search specimens' },
+            input: {
+              sx: { borderRadius: 5 },
+              startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
+              endAdornment: searchText && (
+                <InputAdornment position="end">
+                  <IconButton size="small" edge="end" aria-label="Clear search" onClick={() => setSearchText('')}>
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            },
+          }}
+        />
         <Box sx={{ flexGrow: 1 }} />
         <Button variant="outlined" onClick={() => setPublishOpen(true)}>Publish</Button>
         <ColumnPicker visible={visibleIds} onChange={handleColumnsChange} />
@@ -199,7 +240,9 @@ const SpecimensTable: React.FC = () => {
               )}
               {data?.content.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={columns.length + 2} align="center">No specimens yet.</TableCell>
+                  <TableCell colSpan={columns.length + 2} align="center">
+                    {query ? `No specimens match “${query}”.` : 'No specimens yet.'}
+                  </TableCell>
                 </TableRow>
               )}
               {data?.content.map(s => (

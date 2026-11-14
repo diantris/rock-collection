@@ -69,6 +69,60 @@ test('A pinned stone tops the default order (by name), sorting by a column ignor
   }
 });
 
+test('The search box finds stones by part of the name or market name, or by number', async ({ page, request }) => {
+  const stamp = Date.now();
+  const specimen = await createSpecimen(request, { name: `Searchable Dalmatian ${stamp}`, marketName: `Spotty jasper ${stamp}` });
+  const other = await createSpecimen(request, { name: `Unrelated ${stamp}` });
+  try {
+    await page.goto('/');
+    const table = page.getByRole('table', { name: 'Specimens' });
+    const search = page.getByRole('searchbox', { name: 'Search specimens' });
+    await search.fill(`dalmatian ${stamp}`);
+    await expect(table.getByRole('row')).toHaveCount(2); // header + the match
+    await expect(table.getByRole('row').nth(1)).toContainText(specimen.name);
+
+    await search.fill(`JASPER ${stamp}`);
+    await expect(table.getByRole('row').nth(1)).toContainText(specimen.name);
+    await search.fill(`#${other.id}`);
+    await expect(table.getByRole('row')).toHaveCount(2);
+    await expect(table.getByRole('row').nth(1)).toContainText(other.name);
+    await search.fill(`nothing like this ${stamp}`);
+    await expect(table.getByText(`No specimens match “nothing like this ${stamp}”.`)).toBeVisible();
+
+    await page.getByRole('button', { name: 'Clear search' }).click();
+    await expect(search).toHaveValue('');
+    await expect(table.getByText(/No specimens match/)).toBeHidden();
+  } finally {
+    await request.delete(`${API}/specimens/${specimen.id}`);
+    await request.delete(`${API}/specimens/${other.id}`);
+  }
+});
+
+test('"Where I got it" offers the places already used, the latest first', async ({ page, request }) => {
+  const stamp = Date.now();
+  const older = await createSpecimen(request, { name: `Place test A ${stamp}`, acquiredFrom: `Old fair ${stamp}` });
+  const newer = await createSpecimen(request, { name: `Place test B ${stamp}`, acquiredFrom: `Etsy ${stamp}` });
+  try {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Add a specimen' }).click();
+    const form = page.getByRole('dialog', { name: 'Add a specimen' });
+    await form.getByRole('button', { name: /Origin & acquisition/ }).click();
+    const place = form.getByRole('combobox', { name: 'Where I got it', exact: true });
+    await place.click(); // the list opens without typing
+    const options = page.getByRole('listbox').getByRole('option');
+    await expect(options.first()).toHaveText(`Etsy ${stamp}`);
+    await expect(page.getByRole('option', { name: `Old fair ${stamp}` })).toBeVisible();
+
+    await place.fill('ets'); // a few letters narrow the list
+    await expect(page.getByRole('option', { name: `Old fair ${stamp}` })).toBeHidden();
+    await page.getByRole('option', { name: `Etsy ${stamp}` }).click();
+    await expect(place).toHaveValue(`Etsy ${stamp}`);
+  } finally {
+    await request.delete(`${API}/specimens/${older.id}`);
+    await request.delete(`${API}/specimens/${newer.id}`);
+  }
+});
+
 test('"Why it’s special" sits under the name in the form and at the top of the details', async ({ page, request }) => {
   const specimen = await createSpecimen(request, { name: `Why test ${Date.now()}` });
   try {
@@ -198,14 +252,14 @@ test('"Add & next" keeps where-I-got-it details for the next specimen', async ({
     const form = page.getByRole('dialog', { name: 'Add a specimen' });
     await form.getByRole('textbox', { name: 'Name', exact: true }).fill(`${prefix} A`);
     await form.getByRole('button', { name: /Origin & acquisition/ }).click();
-    await form.getByRole('textbox', { name: 'Where I got it', exact: true }).fill('Mineral fair');
+    await form.getByRole('combobox', { name: 'Where I got it', exact: true }).fill('Mineral fair');
     await form.getByRole('button', { name: 'Add & next' }).click();
 
     await expect(form.getByText(`Added “${prefix} A”`)).toBeVisible();
     await expect(form.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue('');
     await form.getByRole('textbox', { name: 'Name', exact: true }).fill(`${prefix} B`);
     await form.getByRole('button', { name: /Origin & acquisition/ }).click();
-    await expect(form.getByRole('textbox', { name: 'Where I got it', exact: true })).toHaveValue('Mineral fair');
+    await expect(form.getByRole('combobox', { name: 'Where I got it', exact: true })).toHaveValue('Mineral fair');
     await form.getByRole('button', { name: 'Add', exact: true }).click();
     await expect(form).toBeHidden();
 

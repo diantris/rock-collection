@@ -191,7 +191,7 @@ class SpecimenServiceTest {
         Page<Specimen> empty = new PageImpl<>(List.of());
         when(specimenRepository.findAll(any(Pageable.class))).thenReturn(empty);
 
-        PageResponse<SpecimenDto.Summary> result = service.findPage(-1, 10_000, "privateNotes", Sort.Direction.DESC);
+        PageResponse<SpecimenDto.Summary> result = service.findPage(-1, 10_000, "privateNotes", Sort.Direction.DESC, null);
 
         Pageable used = usedPageable();
         assertThat(used.getPageNumber()).isZero();
@@ -204,10 +204,27 @@ class SpecimenServiceTest {
     void findPage_byAColumn_ignoresPinsAndBreaksTiesByName() {
         when(specimenRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
 
-        service.findPage(0, 25, "acquiredFrom", Sort.Direction.DESC);
+        service.findPage(0, 25, "acquiredFrom", Sort.Direction.DESC, "  ");
 
         assertThat(usedPageable().getSort()).containsExactly(
                 Sort.Order.desc("acquiredFrom").nullsLast(), Sort.Order.asc("name"), Sort.Order.asc("id"));
+    }
+
+    @Test
+    void findPage_withSearchText_filters() {
+        when(specimenRepository.findAll(org.mockito.ArgumentMatchers.<org.springframework.data.jpa.domain.Specification<Specimen>>any(),
+                any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+
+        service.findPage(0, 25, null, Sort.Direction.ASC, " etsy ");
+
+        verify(specimenRepository, never()).findAll(any(Pageable.class));
+    }
+
+    @Test
+    void recentAcquiredFrom_listsEachPlaceOnceKeepingTheLatestSpelling() {
+        when(specimenRepository.findAcquiredFromByMostRecent()).thenReturn(List.of("Etsy", "Tucson", "etsy", "ETSY"));
+
+        assertThat(service.findRecentAcquiredFrom()).containsExactly("Etsy", "Tucson");
     }
 
     private Pageable usedPageable() {

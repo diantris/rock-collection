@@ -28,7 +28,7 @@ class SpecimenControllerTest {
 
     @Test
     void getPage_parsesLowercaseDirectionAndReturnsPageShape() throws Exception {
-        when(specimenService.findPage(1, 10, "name", Sort.Direction.DESC))
+        when(specimenService.findPage(1, 10, "name", Sort.Direction.DESC, null))
                 .thenReturn(new PageResponse<>(List.of(), 1, 10, 0, 0));
 
         mockMvc.perform(get("/api/specimens").param("page", "1").param("size", "10")
@@ -37,6 +37,15 @@ class SpecimenControllerTest {
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.page").value(1))
                 .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    void getPage_passesTheSearchText() throws Exception {
+        when(specimenService.findPage(0, 25, null, Sort.Direction.ASC, "jasper"))
+                .thenReturn(new PageResponse<>(List.of(), 0, 25, 0, 0));
+
+        mockMvc.perform(get("/api/specimens").param("q", "jasper")).andExpect(status().isOk());
+        verify(specimenService).findPage(0, 25, null, Sort.Direction.ASC, "jasper");
     }
 
     @Test
@@ -56,7 +65,7 @@ class SpecimenControllerTest {
         mockMvc.perform(delete("/api/specimens/1")).andExpect(status().isForbidden());
         verifyNoInteractions(specimenService);
         // Reading needs no header
-        when(specimenService.findPage(anyInt(), anyInt(), any(), any())).thenReturn(new PageResponse<>(List.of(), 0, 25, 0, 0));
+        when(specimenService.findPage(anyInt(), anyInt(), any(), any(), any())).thenReturn(new PageResponse<>(List.of(), 0, 25, 0, 0));
         mockMvc.perform(get("/api/specimens")).andExpect(status().isOk());
     }
 

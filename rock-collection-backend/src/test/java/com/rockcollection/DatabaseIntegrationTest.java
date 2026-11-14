@@ -106,7 +106,7 @@ class DatabaseIntegrationTest {
         assertThat(fetched.components()).extracting(SpecimenDto.Component::materialName).containsExactly("Orthoclase", "Amethyst");
         assertThat(specimenService.findAllTags()).contains("combo", "weird");
 
-        PageResponse<SpecimenDto.Summary> page = specimenService.findPage(0, 25, "acquiredFrom", Sort.Direction.ASC);
+        PageResponse<SpecimenDto.Summary> page = specimenService.findPage(0, 25, "acquiredFrom", Sort.Direction.ASC, null);
         SpecimenDto.Summary summary = page.content().stream().filter(s -> s.id().equals(created.id())).findFirst().orElseThrow();
         assertThat(summary.nature()).hasToString("NATURAL_ROCK");
         assertThat(summary.family()).hasToString("SILICATE");
@@ -114,7 +114,7 @@ class DatabaseIntegrationTest {
         // Materials in use can't be deleted; once the specimen is gone, they can
         assertThatThrownBy(() -> materialService.delete(materialId("Amethyst"))).isInstanceOf(ConflictException.class);
         specimenService.delete(created.id());
-        assertThat(specimenService.findPage(0, 100, "id", Sort.Direction.ASC).content())
+        assertThat(specimenService.findPage(0, 100, "id", Sort.Direction.ASC, null).content())
                 .extracting(SpecimenDto.Summary::id).doesNotContain(created.id());
     }
 
@@ -143,7 +143,7 @@ class DatabaseIntegrationTest {
             assertThat(p.width()).isEqualTo(1600);
         });
         assertThat(photoService.thumbnail(id).getData()).containsExactly(0xFF, 0xD8, 42);
-        SpecimenDto.Summary summary = specimenService.findPage(0, 100, "id", Sort.Direction.ASC).content().stream()
+        SpecimenDto.Summary summary = specimenService.findPage(0, 100, "id", Sort.Direction.ASC, null).content().stream()
                 .filter(s -> s.id().equals(id)).findFirst().orElseThrow();
         assertThat(summary.thumbnailVersion()).isEqualTo(photoService.thumbnail(id).getUpdatedAt().toEpochMilli());
 
@@ -203,11 +203,11 @@ class DatabaseIntegrationTest {
         specimenService.update(pinned, JsonMapper.builder().build()
                 .readValue("{\"name\": \"Zzz favourite\", \"color\": \"green\"}", SpecimenDto.Request.class));
 
-        List<Long> defaultOrder = specimenService.findPage(0, 100, null, Sort.Direction.ASC).content().stream()
+        List<Long> defaultOrder = specimenService.findPage(0, 100, null, Sort.Direction.ASC, null).content().stream()
                 .map(SpecimenDto.Summary::id).toList();
         assertThat(defaultOrder.getFirst()).isEqualTo(pinned);
         assertThat(defaultOrder.indexOf(plain)).isPositive();
-        List<Long> byName = specimenService.findPage(0, 100, "name", Sort.Direction.ASC).content().stream()
+        List<Long> byName = specimenService.findPage(0, 100, "name", Sort.Direction.ASC, null).content().stream()
                 .map(SpecimenDto.Summary::id).toList();
         assertThat(byName.indexOf(plain)).isLessThan(byName.indexOf(pinned));
         // The public site gets them in the same default order
@@ -218,5 +218,33 @@ class DatabaseIntegrationTest {
         assertThat(specimenService.findById(pinned).pinned()).isFalse();
         specimenService.delete(plain);
         specimenService.delete(pinned);
+    }
+
+    @Test
+    void searchMatchesPartOfTheNameOrMarketNameOrTheNumber() {
+        JsonMapper json = JsonMapper.builder().build();
+        Long dalmatian = specimenService.create(json.readValue(
+                "{\"name\": \"Dalmatian Stone\", \"marketName\": \"Dalmatian Jasper\", \"acquiredFrom\": \"Etsy\"}",
+                SpecimenDto.Request.class)).id();
+        Long fire = specimenService.create(json.readValue(
+                "{\"name\": \"Ognisty 100%\", \"marketName\": \"Fire Agate\", \"acquiredFrom\": \"Tucson fair\"}",
+                SpecimenDto.Request.class)).id();
+        java.util.function.Function<String, List<Long>> search = q -> specimenService
+                .findPage(0, 100, null, Sort.Direction.ASC, q).content().stream().map(SpecimenDto.Summary::id).toList();
+
+        assertThat(search.apply("MATIAN st")).containsExactly(dalmatian);
+        assertThat(search.apply("jasp")).containsExactly(dalmatian);
+        assertThat(search.apply("#" + fire)).contains(fire);
+        assertThat(search.apply("100%")).containsExactly(fire);
+        assertThat(search.apply("1_0")).isEmpty(); // _ is not a wildcard
+        assertThat(search.apply(" ")).contains(dalmatian, fire);
+
+        // The latest-saved place comes first; a different case of a known place isn't listed again
+        specimenService.update(dalmatian, json.readValue(
+                "{\"name\": \"Dalmatian Stone\", \"acquiredFrom\": \"Etsy\"}", SpecimenDto.Request.class));
+        assertThat(specimenService.findRecentAcquiredFrom()).startsWith("Etsy").contains("Tucson fair");
+
+        specimenService.delete(dalmatian);
+        specimenService.delete(fire);
     }
 }

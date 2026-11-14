@@ -22,22 +22,30 @@ public class SpecimenController {
     /**
      * Paginated list for the table, e.g. {@code /api/specimens?page=0&size=25&sort=name&direction=asc}.
      * Accepted sort keys are listed in {@link SpecimenService#SORTABLE}; without one, pinned specimens come first,
-     * then by name.
+     * then by name. {@code q} keeps only specimens whose name or market name contains it (ignoring case), or whose
+     * number it is ("142" or "#142").
      */
     @GetMapping
     public PageResponse<SpecimenDto.Summary> getPage(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int size,
             @RequestParam(required = false) String sort,
-            @RequestParam(defaultValue = "asc") String direction) {
+            @RequestParam(defaultValue = "asc") String direction,
+            @RequestParam(required = false) String q) {
         return specimenService.findPage(page, size, sort,
-                Sort.Direction.fromOptionalString(direction).orElse(Sort.Direction.ASC));
+                Sort.Direction.fromOptionalString(direction).orElse(Sort.Direction.ASC), q);
     }
 
     /** All tags in use, alphabetically, for autocomplete. */
     @GetMapping("/tags")
     public List<String> getTags() {
         return specimenService.findAllTags();
+    }
+
+    /** Every "where I got it" in use, most recently used first, for the form's suggestions. */
+    @GetMapping("/acquired-from")
+    public List<String> getAcquiredFrom() {
+        return specimenService.findRecentAcquiredFrom();
     }
 
     @GetMapping("/{id}")
