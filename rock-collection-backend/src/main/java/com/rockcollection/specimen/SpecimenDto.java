@@ -43,7 +43,8 @@ public final class SpecimenDto {
             MaterialFamily family,
             SpecimenForm form, SpecimenNature nature, String country,
             AcquisitionType acquisitionType, String acquiredFrom, String acquiredCountry, Integer acquiredYear,
-            BigDecimal price, String currency, List<String> tags, boolean published, boolean gone, Long thumbnailVersion) {
+            BigDecimal price, String currency, List<String> tags, boolean published, boolean gone, boolean pinned,
+            Long thumbnailVersion) {
         /** @param thumbnailVersion changes whenever the thumbnail does; null when there's no photo */
         static Summary from(Specimen s, Long thumbnailVersion) {
             SpecimenComponent primary = s.primaryComponent();
@@ -52,7 +53,8 @@ public final class SpecimenDto {
                     primary != null ? primary.getMaterial().getFamily() : null,
                     s.getForm(), s.getNature(), s.getCountry(),
                     s.getAcquisitionType(), s.getAcquiredFrom(), s.getAcquiredCountry(), s.getAcquiredYear(),
-                    s.getPrice(), s.getCurrency(), List.copyOf(s.getTags()), s.isPublished(), s.isGone(), thumbnailVersion);
+                    s.getPrice(), s.getCurrency(), List.copyOf(s.getTags()), s.isPublished(), s.isGone(), s.isPinned(),
+                    thumbnailVersion);
         }
     }
 
@@ -70,7 +72,7 @@ public final class SpecimenDto {
             AcquisitionType acquisitionType, String acquiredFrom, String acquiredCountry,
             Integer acquiredYear, Integer acquiredMonth, Integer acquiredDay, BigDecimal price, String currency,
             List<String> tags, String description, String mindatUrl, String privateNotes,
-            boolean published, boolean gone, Instant createdAt, Instant updatedAt) {
+            boolean published, boolean gone, boolean pinned, Instant createdAt, Instant updatedAt) {
         static Detail from(Specimen s) {
             return new Detail(s.getId(), s.getName(), s.getMarketName(),
                     s.getForm(), s.getNature(), s.getTreatmentNotes(),
@@ -85,7 +87,7 @@ public final class SpecimenDto {
                     s.getAcquisitionType(), s.getAcquiredFrom(), s.getAcquiredCountry(),
                     s.getAcquiredYear(), s.getAcquiredMonth(), s.getAcquiredDay(), s.getPrice(), s.getCurrency(),
                     List.copyOf(s.getTags()), s.getDescription(), s.getMindatUrl(), s.getPrivateNotes(),
-                    s.isPublished(), s.isGone(), s.getCreatedAt(), s.getUpdatedAt());
+                    s.isPublished(), s.isGone(), s.isPinned(), s.getCreatedAt(), s.getUpdatedAt());
         }
     }
 
@@ -120,6 +122,12 @@ public final class SpecimenDto {
             String description,
             @Size(max = 512) @Pattern(regexp = "\\s*(https?://\\S+)?\\s*", message = "must be a web address starting with http:// or https://") String mindatUrl,
             String privateNotes,
-            Boolean published, Boolean gone) {
+            Boolean published, Boolean gone,
+            /** Left out (null): an update keeps the current value, a new specimen isn't pinned. */
+            Boolean pinned) {
+    }
+
+    /** Body for PUT /api/specimens/{id}/pinned. */
+    public record PinRequest(boolean pinned) {
     }
 }

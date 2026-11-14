@@ -21,13 +21,14 @@ public class SpecimenController {
 
     /**
      * Paginated list for the table, e.g. {@code /api/specimens?page=0&size=25&sort=name&direction=asc}.
-     * Accepted sort keys are listed in {@link SpecimenService#SORTABLE}.
+     * Accepted sort keys are listed in {@link SpecimenService#SORTABLE}; without one, pinned specimens come first,
+     * then by name.
      */
     @GetMapping
     public PageResponse<SpecimenDto.Summary> getPage(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int size,
-            @RequestParam(defaultValue = "id") String sort,
+            @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "asc") String direction) {
         return specimenService.findPage(page, size, sort,
                 Sort.Direction.fromOptionalString(direction).orElse(Sort.Direction.ASC));
@@ -53,6 +54,13 @@ public class SpecimenController {
     @PutMapping("/{id}")
     public SpecimenDto.Detail update(@PathVariable Long id, @Valid @RequestBody SpecimenDto.Request request) {
         return specimenService.update(id, request);
+    }
+
+    /** Pins the specimen to the top of the table, or unpins it, without touching anything else. */
+    @PutMapping("/{id}/pinned")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void setPinned(@PathVariable Long id, @RequestBody SpecimenDto.PinRequest request) {
+        specimenService.setPinned(id, request.pinned());
     }
 
     @DeleteMapping("/{id}")

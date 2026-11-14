@@ -42,6 +42,33 @@ test('Clicking a row opens the details; editing hardness with a decimal comma sa
   }
 });
 
+test('A pinned stone tops the default order (by name), sorting by a column ignores pins, a third click goes back', async ({ page, request }) => {
+  const specimen = await createSpecimen(request, { name: `Zzz pin test ${Date.now()}` }); // last by name
+  const other = await createSpecimen(request, { name: `Aaa pin test ${Date.now()}` });
+  try {
+    await page.goto('/');
+    const table = page.getByRole('table', { name: 'Specimens' });
+    await expect(table.getByRole('columnheader', { name: 'Name', exact: true })).toHaveCSS('position', 'sticky');
+    await page.getByRole('button', { name: '#' }).click();
+    await page.getByRole('button', { name: '#' }).click(); // newest first
+    const pin = page.getByRole('button', { name: `Pin ${specimen.name}` });
+    await expect(pin).toHaveAttribute('aria-pressed', 'false');
+    await pin.click();
+    await expect(pin).toHaveAttribute('aria-pressed', 'true');
+
+    await page.getByRole('button', { name: '#' }).click(); // third click: back to pinned first, then by name
+    await expect(table.getByRole('row').nth(1)).toContainText(specimen.name);
+    await page.getByRole('button', { name: 'Name', exact: true }).click(); // A to Z, pins ignored
+    await expect(table.getByRole('row').nth(1)).not.toContainText(specimen.name);
+
+    const saved = await (await request.get(`${API}/specimens/${specimen.id}`)).json();
+    expect(saved.pinned).toBe(true);
+  } finally {
+    await request.delete(`${API}/specimens/${specimen.id}`);
+    await request.delete(`${API}/specimens/${other.id}`);
+  }
+});
+
 test('A specimen can link to its mindat.org page; anything but a web address is refused', async ({ page, request }) => {
   const specimen = await createSpecimen(request, { name: `Link test ${Date.now()}` });
   const url = 'https://www.mindat.org/min-54558.html';

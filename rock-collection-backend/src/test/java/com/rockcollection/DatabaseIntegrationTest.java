@@ -188,4 +188,29 @@ class DatabaseIntegrationTest {
         specimenService.delete(gone);
         specimenService.delete(goneHidden);
     }
+
+    @Test
+    void pinnedSpecimensComeFirstUntilTheTableIsSortedByAColumn() {
+        Long plain = specimenService.create(JsonMapper.builder().build()
+                .readValue("{\"name\": \"Aaa plain\"}", SpecimenDto.Request.class)).id();
+        Long pinned = specimenService.create(JsonMapper.builder().build()
+                .readValue("{\"name\": \"Zzz favourite\"}", SpecimenDto.Request.class)).id();
+        specimenService.setPinned(pinned, true);
+        // The edit form doesn't send the pin, and an edit keeps it
+        specimenService.update(pinned, JsonMapper.builder().build()
+                .readValue("{\"name\": \"Zzz favourite\", \"color\": \"green\"}", SpecimenDto.Request.class));
+
+        List<Long> defaultOrder = specimenService.findPage(0, 100, null, Sort.Direction.ASC).content().stream()
+                .map(SpecimenDto.Summary::id).toList();
+        assertThat(defaultOrder.getFirst()).isEqualTo(pinned);
+        assertThat(defaultOrder.indexOf(plain)).isPositive();
+        List<Long> byName = specimenService.findPage(0, 100, "name", Sort.Direction.ASC).content().stream()
+                .map(SpecimenDto.Summary::id).toList();
+        assertThat(byName.indexOf(plain)).isLessThan(byName.indexOf(pinned));
+
+        specimenService.setPinned(pinned, false);
+        assertThat(specimenService.findById(pinned).pinned()).isFalse();
+        specimenService.delete(plain);
+        specimenService.delete(pinned);
+    }
 }

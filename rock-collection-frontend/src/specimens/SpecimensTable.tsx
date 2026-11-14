@@ -1,11 +1,14 @@
-// SpecimensTable.tsx - Paginated, server-sorted specimen table with selectable columns and add/delete actions
+// SpecimensTable.tsx - Paginated, server-sorted specimen table with selectable columns, pins and add/delete actions.
+// Unsorted, pinned specimens come first, then by name; clicking a column sorts by it (a third click goes back).
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert, Box, Button, ButtonBase, CircularProgress, IconButton, Paper, Stack, SxProps, Table, TableBody, TableCell,
-  TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Theme, Typography,
+  TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, Theme, Tooltip, Typography,
 } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
-import { deleteSpecimen, fetchPhotos, fetchSpecimens } from './api';
+import PushPinIcon from '@mui/icons-material/PushPin';
+import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
+import { deleteSpecimen, fetchPhotos, fetchSpecimens, setSpecimenPinned } from './api';
 import PhotoGallery from './PhotoGallery';
 import SpecimenFormDialog from './SpecimenFormDialog';
 import SpecimenDetailDialog from './SpecimenDetailDialog';
@@ -16,11 +19,17 @@ import ColumnPicker from './ColumnPicker';
 import { COLUMNS, ColumnDef, loadVisibleColumns, saveVisibleColumns } from './columns';
 import { Order, Page, Photo, SpecimenSortKey, SpecimenSummary } from './types';
 
-/** Styles freezing a column on the left while the rest of the table scrolls sideways. */
-function stickySx(col: ColumnDef, left: number | undefined, header: boolean): SxProps<Theme> {
-  if (left === undefined) return { whiteSpace: 'nowrap' };
+/** Width of the pin column, always the first one, frozen on the left. */
+const PIN_WIDTH = 48;
+
+/**
+ * Styles freezing a column on the left while the rest of the table scrolls sideways. Header cells also stick to the
+ * top (the table's `stickyHeader`), so they need an opaque background; frozen header cells sit above everything.
+ */
+function stickySx(width: number | undefined, left: number | undefined, header: boolean): SxProps<Theme> {
+  if (left === undefined) return { whiteSpace: 'nowrap', ...(header && { bgcolor: 'background.paper' }) };
   return {
-    position: 'sticky', left, zIndex: header ? 3 : 1, width: col.width, minWidth: col.width, maxWidth: col.width,
+    position: 'sticky', left, zIndex: header ? 3 : 1, width, minWidth: width, maxWidth: width,
     bgcolor: 'background.paper', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
   };
 }
@@ -32,7 +41,8 @@ const SpecimensTable: React.FC = () => {
   const [notice, setNotice] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
-  const [sortBy, setSortBy] = useState<SpecimenSortKey>('id');
+  // null: the default order (pinned first, then by name)
+  const [sortBy, setSortBy] = useState<SpecimenSortKey | null>(null);
   const [order, setOrder] = useState<Order>('asc');
   // Defaults on first render (matches server rendering), then the saved choice from this browser
   const [visibleIds, setVisibleIds] = useState(() => COLUMNS.filter(c => c.defaultVisible).map(c => c.id));
@@ -61,7 +71,7 @@ const SpecimensTable: React.FC = () => {
   // Left offset of each visible sticky column = sum of the widths of the sticky columns before it
   const stickyLeft = useMemo(() => {
     const offsets: Record<string, number> = {};
-    let left = 0;
+    let left = PIN_WIDTH;
     for (const col of columns) {
       if (!col.sticky) continue;
       offsets[col.id] = left;
@@ -92,14 +102,25 @@ const SpecimensTable: React.FC = () => {
     );
   };
 
+  /** Ascending, then descending, then back to the default order. */
   const handleSort = (key: SpecimenSortKey) => {
-    setOrder(sortBy === key && order === 'asc' ? 'desc' : 'asc');
-    setSortBy(key);
+    if (sortBy === key && order === 'desc') {
+      setSortBy(null);
+      setOrder('asc');
+    } else {
+      setOrder(sortBy === key ? 'desc' : 'asc');
+      setSortBy(key);
+    }
     setPage(0);
   };
 
+  const togglePin = (s: SpecimenSummary) => {
+    setSpecimenPinned(s.id, !s.pinned).then(load).catch(err => setNotice(err.message));
+  };
+
   return (
-    <Box sx={{ p: 3 }}>
+    // The page fills the window and only the table scrolls, so its header row stays in view
+    <Box sx={{ p: 3, height: '100dvh', minHeight: 480, boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
       <Typography variant="h4" component="h1" sx={{ fontWeight: 600, mb: 2 }}>
         Rock Collection
       </Typography>
@@ -114,14 +135,19 @@ const SpecimensTable: React.FC = () => {
       {error && <Alert severity="error" sx={{ mb: 2 }}>Error: {error}</Alert>}
       {notice && <Alert severity="warning" sx={{ mb: 2 }} onClose={() => setNotice(null)}>{notice}</Alert>}
 
-      <Paper variant="outlined">
-        {/* Scrolls sideways when the chosen columns don't fit; sticky columns stay put */}
-        <TableContainer sx={{ overflowX: 'auto' }}>
-          <Table aria-label="Specimens" size="small">
+      <Paper variant="outlined" sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        {/* Scrolls both ways; the header row and the frozen columns stay put */}
+        <TableContainer sx={{ flex: 1, overflow: 'auto' }}>
+          <Table aria-label="Specimens" size="small" stickyHeader>
             <TableHead>
               <TableRow>
+                <TableCell aria-label="Pinned" sx={stickySx(PIN_WIDTH, 0, true)}>
+                  <Tooltip title="Pinned stones come first, until you sort by a column">
+                    <PushPinOutlinedIcon fontSize="small" sx={{ display: 'block', mx: 'auto' }} />
+                  </Tooltip>
+                </TableCell>
                 {columns.map(col => (
-                  <TableCell key={col.id} sx={stickySx(col, stickyLeft[col.id], true)}
+                  <TableCell key={col.id} sx={stickySx(col.width, stickyLeft[col.id], true)}
                     sortDirection={col.sortKey && sortBy === col.sortKey ? order : false}>
                     {col.sortKey ? (
                       <TableSortLabel
@@ -134,24 +160,33 @@ const SpecimensTable: React.FC = () => {
                     ) : col.label}
                   </TableCell>
                 ))}
-                <TableCell aria-label="Actions" />
+                <TableCell aria-label="Actions" sx={stickySx(undefined, undefined, true)} />
               </TableRow>
             </TableHead>
             <TableBody>
               {data === null && !error && (
                 <TableRow>
-                  <TableCell colSpan={columns.length + 1} align="center"><CircularProgress size={24} /></TableCell>
+                  <TableCell colSpan={columns.length + 2} align="center"><CircularProgress size={24} /></TableCell>
                 </TableRow>
               )}
               {data?.content.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={columns.length + 1} align="center">No specimens yet.</TableCell>
+                  <TableCell colSpan={columns.length + 2} align="center">No specimens yet.</TableCell>
                 </TableRow>
               )}
               {data?.content.map(s => (
                 <TableRow key={s.id} hover onClick={() => setDetailId(s.id)} sx={[{ cursor: 'pointer' }, s.gone && goneRowSx]}>
+                  <TableCell padding="none" align="center" sx={stickySx(PIN_WIDTH, 0, false)}>
+                    <Tooltip title={s.pinned ? 'Unpin' : 'Pin to the top'}>
+                      <IconButton aria-label={`Pin ${s.name}`} aria-pressed={s.pinned} size="small"
+                        onClick={e => { e.stopPropagation(); togglePin(s); }}
+                        sx={{ color: s.pinned ? 'primary.main' : 'text.disabled' }}>
+                        {s.pinned ? <PushPinIcon fontSize="small" /> : <PushPinOutlinedIcon fontSize="small" />}
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
                   {columns.map(col => (
-                    <TableCell key={col.id} sx={stickySx(col, stickyLeft[col.id], false)}
+                    <TableCell key={col.id} sx={stickySx(col.width, stickyLeft[col.id], false)}
                       title={col.id === 'name' ? s.name : undefined}>
                       {cell(col, s)}
                     </TableCell>

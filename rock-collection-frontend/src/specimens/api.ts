@@ -35,9 +35,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.status === 204 ? (undefined as T) : res.json();
 }
 
-/** One page of specimens; `page` is zero-based. */
-export function fetchSpecimens(page: number, size: number, sort: SpecimenSortKey, direction: Order): Promise<Page<SpecimenSummary>> {
-  const params = new URLSearchParams({ page: String(page), size: String(size), sort, direction });
+/** One page of specimens; `page` is zero-based. Without a sort key: pinned specimens first, then by name. */
+export function fetchSpecimens(page: number, size: number, sort: SpecimenSortKey | null, direction: Order): Promise<Page<SpecimenSummary>> {
+  const params = new URLSearchParams({ page: String(page), size: String(size), direction });
+  if (sort) params.set('sort', sort);
   return request(`/api/specimens?${params}`);
 }
 
@@ -52,6 +53,11 @@ export function createSpecimen(body: SpecimenRequest): Promise<SpecimenDetail> {
 /** Replaces every field of the specimen (send the full request, not a patch). */
 export function updateSpecimen(id: number, body: SpecimenRequest): Promise<SpecimenDetail> {
   return request(`/api/specimens/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+}
+
+/** Pins the specimen to the top of the table, or unpins it; nothing else changes. */
+export function setSpecimenPinned(id: number, pinned: boolean): Promise<void> {
+  return request(`/api/specimens/${id}/pinned`, { method: 'PUT', body: JSON.stringify({ pinned }) });
 }
 
 export function deleteSpecimen(id: number): Promise<void> {

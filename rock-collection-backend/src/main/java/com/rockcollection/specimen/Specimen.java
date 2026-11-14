@@ -94,6 +94,9 @@ public class Specimen {
     /** No longer in the owner's collection: kept for its number and history, never published. */
     @Column(nullable = false)
     private boolean gone;
+    /** Shown at the top of the table while it isn't sorted by a column. Private: it doesn't affect the public site. */
+    @Column(nullable = false)
+    private boolean pinned;
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -220,6 +223,8 @@ public class Specimen {
     public void setPublished(boolean published) { this.published = published; }
     public boolean isGone() { return gone; }
     public void setGone(boolean gone) { this.gone = gone; }
+    public boolean isPinned() { return pinned; }
+    public void setPinned(boolean pinned) { this.pinned = pinned; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public List<SpecimenComponent> getComponents() { return components; }

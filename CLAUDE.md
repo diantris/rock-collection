@@ -68,6 +68,7 @@ Keep data entry **low-friction**: sensible defaults, few required fields, no lon
 - the public site (roadmap step 4): the Publish dialog with the global field checkboxes, and the generated static site
 - the "no longer in my collection" (`gone`) flag, and the material type/family rework (Day 11)
 - a mindat.org link per specimen, in Notes; on the public page it's in the Notes panel with the description (Day 12)
+- pins (pinned stones top the table) and a default order by name; the table's header row stays in view (Day 12)
 
 **Not built yet:**
 - photo captions in the UI (the column exists, nothing edits it)
@@ -116,7 +117,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
     - `acquired_year` / `acquired_month` / `acquired_day`: partial dates are allowed, but a full date must exist
     - `price` + `currency`: the currency defaults to PLN when a price is given
   - **Text:** `tags` (`VARCHAR[]`, trimmed, with case-insensitive duplicates removed), `description` (public), `mindat_url` (V9: a link to the stone's mindat.org page, or any other web page, for stones few people know, e.g. zarinite; the API refuses anything but `http(s)://`) and `private_notes` (never exported).
-  - **Admin:** `published` (shown on the public site; **defaults to true** when a request leaves it out, and the form's switch starts on), `gone` (V7: no longer in the owner's collection, e.g. given away or sold; defaults to false), `created_at`, `updated_at`.
+  - **Admin:** `published` (shown on the public site; **defaults to true** when a request leaves it out, and the form's switch starts on), `gone` (V7: no longer in the owner's collection, e.g. given away or sold; defaults to false), `pinned` (V10: shown at the top of the table while it isn't sorted by a column; private, the public site ignores it; a request without it keeps the current value, since only the table's pin button sets it), `created_at`, `updated_at`.
   - **Gone specimens** keep their number and data, are greyed out in the table with a "Gone" chip, and are **never published, whatever `published` says**. Their `published` value is kept (not switched off), so unmarking one restores it as it was. The owner is told to mark stones gone rather than delete them, so public numbers are never reused; deleting is for mistakes.
 - **`material`:** a component specimens are made of, entered once and shared by every specimen made of it. **Materials are never rocks** and must make scientific sense (unakite = epidote + quartz + orthoclase; goldstone = glass + copper; obsidian = volcanic glass).
   - `name`: the scientific name, unique ignoring case
@@ -127,7 +128,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
 - **`specimen_component`:** links a specimen to the materials it consists of, each with a `role` (HOST; INCLUSION, inside the host; ASSOCIATED, grows alongside it; MATRIX, shown as "Matrix component": part of the rock it sits on, which itself only appears in the specimen's name), a `certainty` (CONFIRMED, TENTATIVE, SELLER_CLAIM) and a `position`. A specimen with no components counts as **"unidentified"**.
 - **`specimen_photo`** (`photo/SpecimenPhoto`): `file_name` (path in the Pages repo, unique, e.g. `photos/142/142-3f9a1c2e.jpg`), `caption`, `position` (0 = cover) and the published `width` / `height`. It refers to the specimen by a plain `specimen_id` column; the `Specimen` entity has no photo collection.
 - **`specimen_thumbnail`** (`photo/SpecimenThumbnail`): one 192px square JPEG per specimen (`bytea`) plus `updated_at`, in its own table so specimen queries never load image bytes. It's made from the cover photo.
-- V1–V3 are the old rock/group schema, and V4 drops it. V5 adds the photo details (thumbnail `updated_at`, photo `width` / `height`, unique `file_name`). V6 adds `publish_settings`, V7 the `gone` flag, V8 the material types/families and nature values above (removing the rock materials), V9 the specimen `mindat_url` (and ticks its publish field in saved settings). Never edit a migration that has run anywhere; always add `V{n+1}__*.sql`. (V4 was still edited on Day 7, because it hadn't run anywhere yet.)
+- V1–V3 are the old rock/group schema, and V4 drops it. V5 adds the photo details (thumbnail `updated_at`, photo `width` / `height`, unique `file_name`). V6 adds `publish_settings`, V7 the `gone` flag, V8 the material types/families and nature values above (removing the rock materials), V9 the specimen `mindat_url` (and ticks its publish field in saved settings), V10 `pinned`. Never edit a migration that has run anywhere; always add `V{n+1}__*.sql`. (V4 was still edited on Day 7, because it hadn't run anywhere yet.)
 - **`publish_settings`** (`publish/PublishSettings`): exactly one row (id 1), created with the defaults on first use: `fields` (`VARCHAR[]` of `PublishField` names), `intro` (front-page text), `last_published_at`, `last_commit`.
 - **`special_properties` / `optical_effects` hold enum names as text.** Read them through `Specimen.specialPropertyValues()` / `opticalEffectValues()`, which skip a name the enum no longer has, so renaming or removing a value can't break the detail view or publishing.
 - **Type in the table comes from the specimen's nature** (`NATURE_TYPE_LABELS`: Mineral, Rock, Organic, Mineraloid, Synthetic, Artificial), since materials can't say "rock". **Family** comes from the primary component (`Specimen.primaryComponent()`: the first HOST component, otherwise the first component); with no components it shows as unknown.
@@ -169,10 +170,11 @@ Unknown specimens are the main use case. The owner records measurements and obse
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/api/specimens?page=0&size=25&sort=name&direction=asc` | Returns `PageResponse<Summary>` (`content`, `page`, `size`, `totalElements`, `totalPages`). `size` is capped at 100. Sort keys are listed in `SpecimenService.SORTABLE`; unknown keys fall back to id. |
+| GET | `/api/specimens?page=0&size=25&sort=name&direction=asc` | Returns `PageResponse<Summary>` (`content`, `page`, `size`, `totalElements`, `totalPages`). `size` is capped at 100. Sort keys are listed in `SpecimenService.SORTABLE`. Without `sort` (or with an unknown key) the order is pinned first, then by name. Ties are broken by name, then id. |
 | GET | `/api/specimens/tags` | Every tag in use, for autocomplete |
 | GET | `/api/specimens/{id}` | `Detail`, all fields including private ones |
 | POST / PUT | `/api/specimens[/{id}]` | `Request`. Only `name` is required. `components: [{materialId, role?, certainty?}]` replaces the whole list; `role` defaults to HOST and `certainty` to TENTATIVE. |
+| PUT | `/api/specimens/{id}/pinned` | Body `{pinned: true}`; 204. Changes nothing else. |
 | DELETE | `/api/specimens/{id}` | 204, or 404 if it doesn't exist. Also removes the specimen's photos from the Pages repo. |
 | GET | `/api/specimens/{id}/photos` | Photos, cover first: `{id, fileName, url, caption, position, width, height}`. `url` is a raw.githubusercontent.com link, which works as soon as the commit exists. |
 | POST | `/api/specimens/{id}/photos` | Multipart, one or more `files` parts. 201 with all photos. 400 for an unreadable image (named in the message), 503 without GitHub. |
@@ -191,7 +193,8 @@ Unknown specimens are the main use case. The owner records measurements and obse
 - **Table columns** are defined in `specimens/columns.tsx` (`COLUMNS`).
   - Shown by default: #, Photo, Name, Market name, Type, Family, Where I got it.
   - `ColumnPicker` lets the user choose others. The choice is saved in `localStorage`, per browser.
-  - #, Photo and Name are frozen on the left, and the table scrolls sideways.
+  - #, Photo and Name are frozen on the left, and the table scrolls sideways. The page fills the window and only the table scrolls, so the header row (`stickyHeader`) stays in view.
+  - **Pins:** the first column is always the pin button ("Pin {name}", `aria-pressed`), outside the column picker. Unsorted, the table shows pinned stones first, then by name; clicking a column sorts by it (ascending, descending, then a third click goes back to the default order).
   - The optional "Scientific identity" column shows materials as chips: filled when confirmed, outlined when tentative.
 - **Clicking a row** opens `SpecimenDetailDialog`. It shows every field grouped into sections, and each section lists its unrecorded fields ("Not recorded: …") as a nudge for measurements. Its Edit button opens `SpecimenFormDialog`.
 - **`SpecimenFormDialog`** handles both add and edit.
@@ -222,6 +225,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
 - **MUI 9 removed system props** (`<Stack gap={2}>`, `<Box display="flex">`). Put style values in `sx` instead.
 - Playwright tests select elements by role and accessible name. Keep these names stable, or update `test/*.spec.ts` along with them:
   - the heading "Rock Collection"
+  - the table's "Pin {name}" buttons
   - the table "Specimens"
   - the buttons "Add a specimen", "Add & next", "Delete {name}" and "Publish"; the dialog "Publish the public site" with the regions "Specimens on the site" and "Fields to publish" (a group per section), "Show all specimens" and the intro textbox
   - the dialogs "Add a specimen", "Edit #{id}", "#{id} {name}" and "Add a material"

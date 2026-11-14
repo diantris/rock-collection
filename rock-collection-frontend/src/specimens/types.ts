@@ -131,6 +131,8 @@ export interface SpecimenSummary {
   published: boolean;
   /** No longer in the collection: greyed out in the app and never published, whatever `published` says. */
   gone: boolean;
+  /** Shown at the top of the table while it isn't sorted by a column. */
+  pinned: boolean;
   /** Changes whenever the thumbnail does; null when the specimen has no photos. */
   thumbnailVersion: number | null;
 }
@@ -234,6 +236,7 @@ export interface SpecimenDetail {
   published: boolean;
   /** No longer in the collection: never published, whatever `published` says. */
   gone: boolean;
+  pinned: boolean;
   createdAt: string;
   updatedAt: string;
 }

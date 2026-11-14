@@ -187,20 +187,33 @@ class SpecimenServiceTest {
     }
 
     @Test
-    void findPage_clampsSizeAndFallsBackToIdForUnknownSortKey() {
+    void findPage_clampsSizeAndFallsBackToPinnedThenNameForUnknownSortKey() {
         Page<Specimen> empty = new PageImpl<>(List.of());
         when(specimenRepository.findAll(any(Pageable.class))).thenReturn(empty);
 
         PageResponse<SpecimenDto.Summary> result = service.findPage(-1, 10_000, "privateNotes", Sort.Direction.DESC);
 
-        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(specimenRepository).findAll(captor.capture());
-        Pageable used = captor.getValue();
+        Pageable used = usedPageable();
         assertThat(used.getPageNumber()).isZero();
         assertThat(used.getPageSize()).isEqualTo(SpecimenService.MAX_PAGE_SIZE);
-        assertThat(used.getSort().getOrderFor("id")).isNotNull();
-        assertThat(used.getSort().getOrderFor("privateNotes")).isNull();
+        assertThat(used.getSort()).containsExactly(Sort.Order.desc("pinned"), Sort.Order.asc("name"), Sort.Order.asc("id"));
         assertThat(result.content()).isEmpty();
+    }
+
+    @Test
+    void findPage_byAColumn_ignoresPinsAndBreaksTiesByName() {
+        when(specimenRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+
+        service.findPage(0, 25, "acquiredFrom", Sort.Direction.DESC);
+
+        assertThat(usedPageable().getSort()).containsExactly(
+                Sort.Order.desc("acquiredFrom").nullsLast(), Sort.Order.asc("name"), Sort.Order.asc("id"));
+    }
+
+    private Pageable usedPageable() {
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(specimenRepository).findAll(captor.capture());
+        return captor.getValue();
     }
 
     private static Material material(Long id, String name, MaterialCategory category, MaterialFamily family) {

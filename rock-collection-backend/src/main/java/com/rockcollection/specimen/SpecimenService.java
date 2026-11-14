@@ -56,13 +56,18 @@ public class SpecimenService {
 
     /**
      * One page of specimens.
-     * @param sortKey one of {@link #SORTABLE}; unknown keys fall back to id
+     * @param sortKey one of {@link #SORTABLE}, or null (or an unknown key) for the default order: pinned specimens
+     *                first, then by name, ignoring {@code direction}
      */
     @Transactional(readOnly = true)
     public PageResponse<SpecimenDto.Summary> findPage(int page, int size, String sortKey, Sort.Direction direction) {
-        String property = SORTABLE.getOrDefault(sortKey, "id");
-        // Secondary sort on id keeps paging stable when many rows share a value (or are null)
-        Sort sort = Sort.by(new Sort.Order(direction, property).nullsLast(), Sort.Order.asc("id"));
+        String property = sortKey == null ? null : SORTABLE.get(sortKey); // Map.of refuses null keys
+        // Then by name, then id, so rows sharing a value (or null) are in a sensible, stable order across pages
+        Sort sort = property == null
+                ? Sort.by(Sort.Order.desc("pinned"), Sort.Order.asc("name"), Sort.Order.asc("id"))
+                : property.equals("name")
+                ? Sort.by(new Sort.Order(direction, "name"), Sort.Order.asc("id"))
+                : Sort.by(new Sort.Order(direction, property).nullsLast(), Sort.Order.asc("name"), Sort.Order.asc("id"));
         PageRequest pageRequest = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, MAX_PAGE_SIZE), sort);
         Page<Specimen> result = specimenRepository.findAll(pageRequest);
         Map<Long, Long> thumbnails = photoService.thumbnailVersions(result.getContent().stream().map(Specimen::getId).toList());
@@ -90,6 +95,11 @@ public class SpecimenService {
         Specimen specimen = get(id);
         apply(specimen, request);
         return SpecimenDto.Detail.from(specimenRepository.saveAndFlush(specimen));
+    }
+
+    /** Pins the specimen to the top of the table (when it isn't sorted by a column), or unpins it. */
+    public void setPinned(Long id, boolean pinned) {
+        get(id).setPinned(pinned);
     }
 
     /** Also removes the specimen's photo files from the Pages repo. */
@@ -150,6 +160,7 @@ public class SpecimenService {
         s.setPrivateNotes(blankToNull(r.privateNotes()));
         s.setPublished(r.published() == null || r.published()); // shown on the public site unless switched off
         s.setGone(Boolean.TRUE.equals(r.gone()));
+        if (r.pinned() != null) s.setPinned(r.pinned()); // the table's pin button sets it on its own
         s.replaceComponents(toComponents(r.components()));
     }
 
