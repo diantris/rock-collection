@@ -19,13 +19,21 @@
     {{#showIdentity}}
     <button type="button" class="chip chip-toggle" aria-pressed="false" data-filter-unidentified>Unidentified only</button>
     {{/showIdentity}}
+    <label class="sort">Sort by
+      <select data-sort>
+        <option value="">Featured first</option>
+        <option value="name">Name, A–Z</option>
+        <option value="number">Number, lowest first</option>
+        <option value="newest">Newest first</option>
+      </select>
+    </label>
     <span class="toolbar-count" aria-live="polite" data-filter-count></span>
   </div>
   {{/hasCards}}
 
   <ul class="cards">
     {{#cards}}
-    <li class="card" data-search="{{search}}" data-unidentified="{{unidentified}}">
+    <li class="card" data-id="{{id}}" data-search="{{search}}" data-unidentified="{{unidentified}}">
       <a href="{{href}}">
         {{#image}}<img class="card-image" src="{{.}}" alt="" loading="lazy">{{/image}}
         {{^image}}<span class="card-image card-image-empty" aria-hidden="true"></span>{{/image}}

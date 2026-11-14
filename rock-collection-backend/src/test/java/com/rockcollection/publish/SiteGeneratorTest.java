@@ -162,9 +162,20 @@ class SiteGeneratorTest {
 
         assertThat(index).contains("2 specimens · 1 still unidentified", "<p class=\"intro\">Hello experts.</p>",
                 "href=\"specimens/3/\"", "href=\"specimens/7/\"", "src=\"photos/7/cover-small.jpg\"",
-                "Orthoclase (tentative)", "data-unidentified=\"true\"", "Unidentified only");
-        assertThat(index.indexOf("Piasek Pustyni")).isLessThan(index.indexOf("Scrap-bin find")); // by number
+                "Orthoclase (tentative)", "data-unidentified=\"true\"", "Unidentified only", "Featured first");
+        assertThat(index.indexOf("Piasek Pustyni")).isLessThan(index.indexOf("Scrap-bin find"));
         assertThat(index).doesNotContain("back");
+    }
+
+    @Test
+    void cardsAndNeighbours_keepTheOrderTheyAreGiven_whichIsTheAppsDefaultOrder() {
+        Map<String, String> site = generate(DEFAULTS, List.of(specimen(9, "Zircon (pinned)"), specimen(3, "Agate"), specimen(5, "Beryl")),
+                Map.of());
+
+        String index = site.get("index.html");
+        assertThat(index.indexOf("Zircon")).isLessThan(index.indexOf("Agate"));
+        assertThat(index.indexOf("Agate")).isLessThan(index.indexOf("Beryl"));
+        assertThat(site.get("specimens/3/index.html")).contains("href=\"../9/\"", "href=\"../5/\"");
     }
 
     @Test

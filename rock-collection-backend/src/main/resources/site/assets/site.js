@@ -1,5 +1,5 @@
-// site.js - Small enhancements for the public site: index search / filter, and gallery arrows, dots and keys.
-// Everything works without it: all cards are listed, and the gallery still swipes and scrolls.
+// site.js - Small enhancements for the public site: index search / filter / sort, and gallery arrows, dots and keys.
+// Everything works without it: all cards are listed (in the owner's order), and the gallery still swipes and scrolls.
 (function () {
   'use strict';
 
@@ -28,6 +28,23 @@
     };
 
     search.addEventListener('input', apply);
+
+    // Sorting: the page lists the cards in the owner's order (featured first, then by name); the other orders are
+    // the visitor's choice. Names compare numbers as numbers ("Agate 2" before "Agate 10").
+    var list = document.querySelector('.cards');
+    var sort = filters.querySelector('[data-sort]');
+    var ownerOrder = cards.slice();
+    var id = function (card) { return Number(card.getAttribute('data-id')); };
+    var name = function (card) { return card.querySelector('.card-name').textContent; };
+    var orders = {
+      name: function (a, b) { return name(a).localeCompare(name(b), undefined, { numeric: true, sensitivity: 'base' }) || id(a) - id(b); },
+      number: function (a, b) { return id(a) - id(b); },
+      newest: function (a, b) { return id(b) - id(a); }
+    };
+    sort.addEventListener('change', function () {
+      var sorted = orders[sort.value] ? ownerOrder.slice().sort(orders[sort.value]) : ownerOrder;
+      sorted.forEach(function (card) { list.appendChild(card); });
+    });
     if (unidentified) {
       unidentified.addEventListener('click', function () {
         unidentified.setAttribute('aria-pressed', unidentified.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');

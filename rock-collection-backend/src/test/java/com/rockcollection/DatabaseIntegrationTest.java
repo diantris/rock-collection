@@ -51,6 +51,8 @@ class DatabaseIntegrationTest {
     private SpecimenThumbnailRepository thumbnailRepository;
     @Autowired
     private PublishService publishService;
+    @Autowired
+    private SpecimenRepository specimenRepository;
 
     private Long materialId(String name) {
         return materialService.findAll().stream().filter(m -> m.name().equals(name)).findFirst().orElseThrow().id();
@@ -207,6 +209,9 @@ class DatabaseIntegrationTest {
         List<Long> byName = specimenService.findPage(0, 100, "name", Sort.Direction.ASC).content().stream()
                 .map(SpecimenDto.Summary::id).toList();
         assertThat(byName.indexOf(plain)).isLessThan(byName.indexOf(pinned));
+        // The public site gets them in the same default order
+        assertThat(specimenRepository.findByPublishedTrueAndGoneFalseOrderByPinnedDescNameAscIdAsc().getFirst().getId())
+                .isEqualTo(pinned);
 
         specimenService.setPinned(pinned, false);
         assertThat(specimenService.findById(pinned).pinned()).isFalse();

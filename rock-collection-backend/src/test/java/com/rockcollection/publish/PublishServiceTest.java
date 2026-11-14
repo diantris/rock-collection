@@ -72,7 +72,7 @@ class PublishServiceTest {
         Specimen s = new Specimen();
         ReflectionTestUtils.setField(s, "id", 4L);
         s.setName("Agate");
-        when(specimenRepository.findByPublishedTrueAndGoneFalseOrderByIdAsc()).thenReturn(List.of(s));
+        when(specimenRepository.findByPublishedTrueAndGoneFalseOrderByPinnedDescNameAscIdAsc()).thenReturn(List.of(s));
         when(photoRepository.findBySpecimenIdInOrderBySpecimenIdAscPositionAscIdAsc(List.of(4L))).thenReturn(List.of());
         when(gitHub.replaceAll(eq("Publish 1 specimen"), anyMap(), any())).thenReturn(Optional.of("abc123"));
 
@@ -92,7 +92,7 @@ class PublishServiceTest {
     @Test
     void publish_nothingChanged_reportsIt() {
         when(settingsRepository.findById(PublishSettings.ID)).thenReturn(Optional.of(new PublishSettings()));
-        when(specimenRepository.findByPublishedTrueAndGoneFalseOrderByIdAsc()).thenReturn(List.of());
+        when(specimenRepository.findByPublishedTrueAndGoneFalseOrderByPinnedDescNameAscIdAsc()).thenReturn(List.of());
         when(gitHub.replaceAll(any(), anyMap(), any())).thenReturn(Optional.empty());
 
         assertThat(service.publish().changed()).isFalse();

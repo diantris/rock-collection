@@ -13,7 +13,8 @@ public interface SpecimenRepository extends JpaRepository<Specimen, Long> {
     List<String> findAllTags();
 
     /** The specimens that appear on the public site, by number: marked public and still in the collection. */
-    List<Specimen> findByPublishedTrueAndGoneFalseOrderByIdAsc();
+    /** What publishing exports, in the table's default order: pinned first, then by name. */
+    List<Specimen> findByPublishedTrueAndGoneFalseOrderByPinnedDescNameAscIdAsc();
 
     long countByPublishedTrueAndGoneFalse();
 

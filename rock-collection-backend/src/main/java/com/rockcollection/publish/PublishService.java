@@ -62,7 +62,7 @@ public class PublishService {
      */
     public PublishDto.Result publish() {
         PublishSettings settings = load();
-        List<Specimen> specimens = specimenRepository.findByPublishedTrueAndGoneFalseOrderByIdAsc();
+        List<Specimen> specimens = specimenRepository.findByPublishedTrueAndGoneFalseOrderByPinnedDescNameAscIdAsc();
         Map<Long, List<SpecimenPhoto>> photos = photoRepository
                 .findBySpecimenIdInOrderBySpecimenIdAscPositionAscIdAsc(specimens.stream().map(Specimen::getId).toList())
                 .stream().collect(Collectors.groupingBy(SpecimenPhoto::getSpecimenId, LinkedHashMap::new, Collectors.toList()));

@@ -79,6 +79,12 @@ h2 { font-size: 1rem; line-height: 1.5rem; font-weight: 500; letter-spacing: 0.1
   background: var(--md-surface-container-high); color: var(--md-on-surface); font: inherit;
 }
 .search:focus { outline: 2px solid var(--md-primary); border-color: transparent; }
+.sort { display: inline-flex; align-items: center; gap: 8px; color: var(--md-on-surface-variant); font-size: 0.875rem; }
+.sort select {
+  height: 40px; padding: 0 12px; border: 1px solid var(--md-outline); border-radius: 20px;
+  background: var(--md-surface-container-high); color: var(--md-on-surface); font: inherit;
+}
+.sort select:focus { outline: 2px solid var(--md-primary); border-color: transparent; }
 .toolbar-count { color: var(--md-on-surface-variant); font-size: 0.875rem; }
 
 .cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); }
