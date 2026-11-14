@@ -61,6 +61,12 @@ export const COLUMNS: ColumnDef[] = [
     render: s => s.gone ? <><Chip size="small" variant="outlined" label="Gone" sx={{ mr: 1 }} />{s.name}</> : s.name,
   },
   { id: 'marketName', label: 'Market name', sortKey: 'marketName', defaultVisible: true, render: s => orUnknown(s.marketName) },
+  {
+    id: 'whySpecial', label: 'Why it’s special', defaultVisible: false,
+    render: s => s.whySpecial
+      ? <Box component="span" title={s.whySpecial} sx={{ display: 'block', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.whySpecial}</Box>
+      : <Unknown text="—" />,
+  },
   { id: 'materials', label: 'Scientific identity', defaultVisible: false, render: s => <ComponentChips components={s.components} /> },
   { id: 'type', label: 'Type', defaultVisible: true, render: s => orUnknown(s.nature && NATURE_TYPE_LABELS[s.nature]) },
   { id: 'family', label: 'Family', defaultVisible: true, render: s => orUnknown(s.family && FAMILY_LABELS[s.family]) },

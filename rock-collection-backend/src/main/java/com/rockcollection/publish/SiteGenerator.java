@@ -113,6 +113,7 @@ public class SiteGenerator {
     // ---- specimen page ----------------------------------------------------------------------------------------------
 
     record SpecimenPage(String root, String pageTitle, String pageDescription, Long id, String name, String marketName,
+                        List<String> whySpecial, boolean hasWhySpecial,
                         List<String> tags, boolean hasTags, List<PagePhoto> photos, boolean hasPhotos, boolean manyPhotos,
                         Identity identity, List<Section> sections, List<String> description, Link link, boolean hasNotes,
                         Neighbour prev, Neighbour next) {}
@@ -184,12 +185,13 @@ public class SiteGenerator {
         List<String> tags = on.test(PublishField.TAGS) ? List.copyOf(s.getTags()) : List.of();
         List<String> description = on.test(PublishField.DESCRIPTION) ? paragraphs(s.getDescription()) : List.of();
         String marketName = on.test(PublishField.MARKET_NAME) ? s.getMarketName() : null;
+        List<String> whySpecial = on.test(PublishField.WHY_SPECIAL) ? paragraphs(s.getWhySpecial()) : List.of();
         String href = on.test(PublishField.MINDAT_LINK) ? webLink(s.getMindatUrl()) : null;
         Link link = href == null ? null
                 : new Link(href, href.matches("(?i)https?://([^/]+\\.)?mindat\\.org(/.*)?") ? "More about it on mindat.org" : href);
         return new SpecimenPage(root, "#%d %s · Rock Collection".formatted(s.getId(), s.getName()),
                 "Specimen #%d: %s. Photos and observations, for help with identification.".formatted(s.getId(), s.getName()),
-                s.getId(), s.getName(), marketName, tags, !tags.isEmpty(),
+                s.getId(), s.getName(), marketName, whySpecial, !whySpecial.isEmpty(), tags, !tags.isEmpty(),
                 pagePhotos, !pagePhotos.isEmpty(), pagePhotos.size() > 1,
                 identity, sections, description, link, !description.isEmpty() || link != null,
                 neighbour(prev), neighbour(next));

@@ -68,6 +68,7 @@ Keep data entry **low-friction**: sensible defaults, few required fields, no lon
 - the public site (roadmap step 4): the Publish dialog with the global field checkboxes, and the generated static site
 - the "no longer in my collection" (`gone`) flag, and the material type/family rework (Day 11)
 - a mindat.org link per specimen, in Notes; on the public page it's in the Notes panel with the description (Day 12)
+- "Why it's special" per specimen, under the name everywhere (Day 12)
 - pins (pinned stones top the table and the public site) and a default order by name; visitors can re-sort the site; the table's header row stays in view (Day 12)
 
 **Not built yet:**
@@ -102,6 +103,7 @@ Monorepo with three Docker Compose services (`docker-compose.yml`), plus `script
 Unknown specimens are the main use case. The owner records measurements and observations, and experts use them to work out what the specimen is.
 
 - **`specimen`:** one physical item. Only `name` is required.
+  - **Why it's special** (`why_special`, V11, free text): why the owner got or keeps it, whatever it really is or is worth. They collect stones that remind them of something, and the reasons are often funny. It's important to them, so it sits right under the name in the form, at the top of the details and under the name on the public page (publish field `WHY_SPECIAL`, ticked by default). There's also an optional table column.
   - **What it is:** `market_name`, `form` (ROUGH, CRYSTAL, TUMBLED, CABOCHON, SPHERE, POINT, FACETED, CARVED, SLAB, BEAD, JEWELRY, OTHER), `nature` and `treatment_notes`. **Nature** says what kind of thing the piece is and whether it's natural: NATURAL_ / TREATED_ × MINERAL, ROCK, ORGANIC, MINERALOID, plus SYNTHETIC (lab-grown, has a natural counterpart), ARTIFICIAL (no counterpart, e.g. goldstone glass) and UNKNOWN. **"Rock" exists only here**: a rock is a specimen made of several materials.
   - **Observed or measured on this piece:** these are the evidence used to identify it, so they stay per specimen even when the material is known.
     - `color` and `secondary_color`; luster, transparency and streak (free text; the full form in step 2 should offer suggestions); cleavage and fracture (two separate fields); crystal habit
@@ -128,7 +130,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
 - **`specimen_component`:** links a specimen to the materials it consists of, each with a `role` (HOST; INCLUSION, inside the host; ASSOCIATED, grows alongside it; MATRIX, shown as "Matrix component": part of the rock it sits on, which itself only appears in the specimen's name), a `certainty` (CONFIRMED, TENTATIVE, SELLER_CLAIM) and a `position`. A specimen with no components counts as **"unidentified"**.
 - **`specimen_photo`** (`photo/SpecimenPhoto`): `file_name` (path in the Pages repo, unique, e.g. `photos/142/142-3f9a1c2e.jpg`), `caption`, `position` (0 = cover) and the published `width` / `height`. It refers to the specimen by a plain `specimen_id` column; the `Specimen` entity has no photo collection.
 - **`specimen_thumbnail`** (`photo/SpecimenThumbnail`): one 192px square JPEG per specimen (`bytea`) plus `updated_at`, in its own table so specimen queries never load image bytes. It's made from the cover photo.
-- V1–V3 are the old rock/group schema, and V4 drops it. V5 adds the photo details (thumbnail `updated_at`, photo `width` / `height`, unique `file_name`). V6 adds `publish_settings`, V7 the `gone` flag, V8 the material types/families and nature values above (removing the rock materials), V9 the specimen `mindat_url` (and ticks its publish field in saved settings), V10 `pinned`. Never edit a migration that has run anywhere; always add `V{n+1}__*.sql`. (V4 was still edited on Day 7, because it hadn't run anywhere yet.)
+- V1–V3 are the old rock/group schema, and V4 drops it. V5 adds the photo details (thumbnail `updated_at`, photo `width` / `height`, unique `file_name`). V6 adds `publish_settings`, V7 the `gone` flag, V8 the material types/families and nature values above (removing the rock materials), V9 the specimen `mindat_url` (and ticks its publish field in saved settings), V10 `pinned`, V11 `why_special` (ticked the same way). Never edit a migration that has run anywhere; always add `V{n+1}__*.sql`. (V4 was still edited on Day 7, because it hadn't run anywhere yet.)
 - **`publish_settings`** (`publish/PublishSettings`): exactly one row (id 1), created with the defaults on first use: `fields` (`VARCHAR[]` of `PublishField` names), `intro` (front-page text), `last_published_at`, `last_commit`.
 - **`special_properties` / `optical_effects` hold enum names as text.** Read them through `Specimen.specialPropertyValues()` / `opticalEffectValues()`, which skip a name the enum no longer has, so renaming or removing a value can't break the detail view or publishing.
 - **Type in the table comes from the specimen's nature** (`NATURE_TYPE_LABELS`: Mineral, Rock, Organic, Mineraloid, Synthetic, Artificial), since materials can't say "rock". **Family** comes from the primary component (`Specimen.primaryComponent()`: the first HOST component, otherwise the first component); with no components it shows as unknown.
@@ -199,7 +201,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
   - The optional "Scientific identity" column shows materials as chips: filled when confirmed, outlined when tentative.
 - **Clicking a row** opens `SpecimenDetailDialog`. It shows every field grouped into sections, and each section lists its unrecorded fields ("Not recorded: …") as a nudge for measurements. Its Edit button opens `SpecimenFormDialog`.
 - **`SpecimenFormDialog`** handles both add and edit.
-  - Name, market name, tags, form and nature are always visible. Everything else is in collapsible sections (`Accordion`), and each section header shows how many of its fields are filled.
+  - Name, "Why it’s special", market name, tags, form and nature are always visible. Everything else is in collapsible sections (`Accordion`), and each section header shows how many of its fields are filled.
   - Numbers accept decimal commas ("2,65").
   - Luster, transparency, streak, cleavage, fracture and habit offer suggestions from `suggestions.ts`, but free text is still allowed. Hardness has a scratch-test hint.
   - Typing a material that isn't on the list offers "Add … as a new material", which opens `AddMaterialDialog` pre-filled.

@@ -69,6 +69,26 @@ test('A pinned stone tops the default order (by name), sorting by a column ignor
   }
 });
 
+test('"Why it’s special" sits under the name in the form and at the top of the details', async ({ page, request }) => {
+  const specimen = await createSpecimen(request, { name: `Why test ${Date.now()}` });
+  try {
+    await page.goto('/');
+    await page.getByRole('button', { name: '#' }).click();
+    await page.getByRole('button', { name: '#' }).click(); // newest first
+    await page.getByRole('row', { name: new RegExp(specimen.name) }).click();
+    await page.getByRole('dialog', { name: new RegExp(`#${specimen.id}`) }).getByRole('button', { name: 'Edit' }).click();
+
+    const form = page.getByRole('dialog', { name: `Edit #${specimen.id}` });
+    await form.getByRole('textbox', { name: 'Why it’s special' }).fill('Looks like a slice of salami');
+    await form.getByRole('button', { name: 'Save' }).click();
+
+    const detail = page.getByRole('dialog', { name: new RegExp(`#${specimen.id}`) });
+    await expect(detail.getByRole('region', { name: 'Why it’s special' })).toContainText('Looks like a slice of salami');
+  } finally {
+    await request.delete(`${API}/specimens/${specimen.id}`);
+  }
+});
+
 test('A specimen can link to its mindat.org page; anything but a web address is refused', async ({ page, request }) => {
   const specimen = await createSpecimen(request, { name: `Link test ${Date.now()}` });
   const url = 'https://www.mindat.org/min-54558.html';

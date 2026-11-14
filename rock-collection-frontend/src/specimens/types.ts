@@ -116,6 +116,8 @@ export interface SpecimenSummary {
   id: number;
   name: string;
   marketName: string | null;
+  /** Why the owner got or keeps it, whatever it really is or is worth. */
+  whySpecial: string | null;
   components: Component[];
   family: MaterialFamily | null;
   form: SpecimenForm | null;
@@ -195,6 +197,8 @@ export interface SpecimenDetail {
   id: number;
   name: string;
   marketName: string | null;
+  /** Why the owner got or keeps it, whatever it really is or is worth. */
+  whySpecial: string | null;
   form: SpecimenForm | null;
   nature: SpecimenNature | null;
   treatmentNotes: string | null;

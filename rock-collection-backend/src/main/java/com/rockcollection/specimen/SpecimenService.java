@@ -119,6 +119,7 @@ public class SpecimenService {
 
         s.setName(r.name().trim());
         s.setMarketName(blankToNull(r.marketName()));
+        s.setWhySpecial(blankToNull(r.whySpecial()));
         s.setForm(r.form());
         s.setNature(r.nature());
         s.setTreatmentNotes(blankToNull(r.treatmentNotes()));

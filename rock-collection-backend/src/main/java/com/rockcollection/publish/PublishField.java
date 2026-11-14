@@ -8,6 +8,7 @@ package com.rockcollection.publish;
  */
 public enum PublishField {
     MARKET_NAME("Market name (what it was sold as)", Group.IDENTITY, true),
+    WHY_SPECIAL("Why it’s special", Group.IDENTITY, true),
     IDENTITY("Scientific identity (materials)", Group.IDENTITY, true),
     FORM("Form", Group.IDENTITY, true),
     NATURE("Nature (natural rock, treated mineral…)", Group.IDENTITY, true),

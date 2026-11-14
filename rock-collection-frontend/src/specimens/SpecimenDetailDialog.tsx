@@ -97,6 +97,13 @@ const SpecimenDetailDialog: React.FC<Props> = ({ specimenId, refreshKey = 0, onC
             {s.gone && (
               <Alert severity="info" sx={{ mb: 2 }}>No longer in your collection. It’s left off the public site from your next publish.</Alert>
             )}
+            {s.whySpecial && (
+              <Box component="section" aria-label="Why it’s special"
+                sx={{ mb: 2, px: 2, py: 1.5, borderRadius: 3, bgcolor: 'm3.secondaryContainer', color: 'm3.onSecondaryContainer' }}>
+                <Typography variant="overline" component="h3" sx={{ lineHeight: 1.5, opacity: 0.8 }}>Why it’s special</Typography>
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>{s.whySpecial}</Typography>
+              </Box>
+            )}
             {s.tags.length > 0 && (
               <Stack direction="row" sx={{ gap: 0.5, flexWrap: 'wrap', mb: 2 }}>
                 {s.tags.map(t => <Chip key={t} size="small" label={t} />)}

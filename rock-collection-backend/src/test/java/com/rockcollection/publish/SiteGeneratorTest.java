@@ -31,6 +31,7 @@ class SiteGeneratorTest {
     private static Specimen fullSpecimen() {
         Specimen s = specimen(7, "Scrap-bin find");
         s.setMarketName("Unknown green");
+        s.setWhySpecial("Looks like a tiny frog.\n\nMy sister found it.");
         s.setForm(SpecimenForm.ROUGH);
         s.setColor("green");
         s.setSecondaryColor("purple");
@@ -165,6 +166,18 @@ class SiteGeneratorTest {
                 "Orthoclase (tentative)", "data-unidentified=\"true\"", "Unidentified only", "Featured first");
         assertThat(index.indexOf("Piasek Pustyni")).isLessThan(index.indexOf("Scrap-bin find"));
         assertThat(index).doesNotContain("back");
+    }
+
+    @Test
+    void whySpecial_isShownUnderTheNameUnlessUnticked() {
+        String page = generate(DEFAULTS, List.of(fullSpecimen()), Map.of()).get("specimens/7/index.html");
+        assertThat(page).contains("Why it’s special", "<p>Looks like a tiny frog.</p>", "<p>My sister found it.</p>");
+        assertThat(page.indexOf("Looks like a tiny frog")).isLessThan(page.indexOf("No photos yet")); // under the name
+
+        Set<PublishField> without = EnumSet.copyOf(DEFAULTS);
+        without.remove(PublishField.WHY_SPECIAL);
+        assertThat(generate(without, List.of(fullSpecimen()), Map.of()).get("specimens/7/index.html"))
+                .doesNotContain("tiny frog", "Why it’s special");
     }
 
     @Test

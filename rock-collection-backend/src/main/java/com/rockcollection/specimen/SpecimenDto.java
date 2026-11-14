@@ -39,7 +39,7 @@ public final class SpecimenDto {
      * (first HOST, else first component) and is null for unidentified specimens; the table's type comes from {@code nature}.
      */
     public record Summary(
-            Long id, String name, String marketName, List<Component> components,
+            Long id, String name, String marketName, String whySpecial, List<Component> components,
             MaterialFamily family,
             SpecimenForm form, SpecimenNature nature, String country,
             AcquisitionType acquisitionType, String acquiredFrom, String acquiredCountry, Integer acquiredYear,
@@ -48,7 +48,7 @@ public final class SpecimenDto {
         /** @param thumbnailVersion changes whenever the thumbnail does; null when there's no photo */
         static Summary from(Specimen s, Long thumbnailVersion) {
             SpecimenComponent primary = s.primaryComponent();
-            return new Summary(s.getId(), s.getName(), s.getMarketName(),
+            return new Summary(s.getId(), s.getName(), s.getMarketName(), s.getWhySpecial(),
                     s.getComponents().stream().map(Component::from).toList(),
                     primary != null ? primary.getMaterial().getFamily() : null,
                     s.getForm(), s.getNature(), s.getCountry(),
@@ -60,7 +60,7 @@ public final class SpecimenDto {
 
     /** Full specimen, including private fields. */
     public record Detail(
-            Long id, String name, String marketName,
+            Long id, String name, String marketName, String whySpecial,
             SpecimenForm form, SpecimenNature nature, String treatmentNotes,
             List<Component> components,
             String color, String secondaryColor, String luster, String transparency, String streak,
@@ -74,7 +74,7 @@ public final class SpecimenDto {
             List<String> tags, String description, String mindatUrl, String privateNotes,
             boolean published, boolean gone, boolean pinned, Instant createdAt, Instant updatedAt) {
         static Detail from(Specimen s) {
-            return new Detail(s.getId(), s.getName(), s.getMarketName(),
+            return new Detail(s.getId(), s.getName(), s.getMarketName(), s.getWhySpecial(),
                     s.getForm(), s.getNature(), s.getTreatmentNotes(),
                     s.getComponents().stream().map(Component::from).toList(),
                     s.getColor(), s.getSecondaryColor(), s.getLuster(), s.getTransparency(), s.getStreak(),
@@ -98,6 +98,7 @@ public final class SpecimenDto {
     public record Request(
             @NotBlank(message = "name is required") @Size(max = 255) String name,
             @Size(max = 255) String marketName,
+            String whySpecial,
             SpecimenForm form, SpecimenNature nature, String treatmentNotes,
             List<@Valid ComponentRequest> components,
             @Size(max = 255) String color, @Size(max = 255) String secondaryColor,

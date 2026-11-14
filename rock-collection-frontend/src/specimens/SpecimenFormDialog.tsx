@@ -41,7 +41,7 @@ interface ComponentDraft {
 
 // Text and number inputs are kept as strings while editing; numbers are parsed on save
 const TEXT_FIELDS = [
-  'name', 'marketName', 'treatmentNotes', 'color', 'secondaryColor', 'luster', 'transparency', 'streak',
+  'name', 'marketName', 'whySpecial', 'treatmentNotes', 'color', 'secondaryColor', 'luster', 'transparency', 'streak',
   'cleavage', 'fracture', 'crystalHabit', 'inclusions', 'otherObservations', 'locality', 'country', 'acquiredFrom',
   'acquiredCountry', 'currency', 'description', 'mindatUrl', 'privateNotes',
 ] as const;
@@ -289,6 +289,8 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
             )}
             {text('name', 'Name', { required: true, autoFocus: !isEdit,
               helperText: 'What you call it, e.g. “Dalmatian Stone” or “green thing from the scrap bin”' })}
+            {text('whySpecial', 'Why it’s special', { multiline: true, minRows: 2,
+              helperText: 'Why you got it or keep it, whatever it really is: what it reminds you of, who gave it to you… Can appear on the public page' })}
             {row(
               text('marketName', 'Market name', { helperText: 'What it was sold as, e.g. “Dalmatian Jasper”' }),
               <Autocomplete key="tags" multiple freeSolo fullWidth options={knownTags} value={form.tags}

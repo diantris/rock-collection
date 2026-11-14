@@ -31,6 +31,8 @@ public class Specimen {
     @Column(nullable = false)
     private String name;
     private String marketName;
+    /** Why the owner got or keeps it, whatever it really is or is worth; often what it reminds them of. */
+    private String whySpecial;
 
     // What it is
     @Enumerated(EnumType.STRING)
@@ -215,6 +217,8 @@ public class Specimen {
     public void setTags(List<String> tags) { this.tags = tags; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public String getWhySpecial() { return whySpecial; }
+    public void setWhySpecial(String whySpecial) { this.whySpecial = whySpecial; }
     public String getMindatUrl() { return mindatUrl; }
     public void setMindatUrl(String mindatUrl) { this.mindatUrl = mindatUrl; }
     public String getPrivateNotes() { return privateNotes; }

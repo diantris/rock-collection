@@ -80,7 +80,7 @@ class DatabaseIntegrationTest {
     @Test
     void specimenWithEveryKindOfFieldRoundTrips() {
         SpecimenDto.Request request = JsonMapper.builder().build().readValue("""
-                {"name": "Scrap-bin find", "marketName": "Unknown green", "form": "ROUGH", "nature": "NATURAL_ROCK",
+                {"name": "Scrap-bin find", "marketName": "Unknown green", "whySpecial": "  Looks like a frog  ", "form": "ROUGH", "nature": "NATURAL_ROCK",
                  "components": [{"materialId": %d, "role": "HOST"}, {"materialId": %d, "role": "ASSOCIATED"}],
                  "color": "green", "secondaryColor": "purple", "hardnessMin": 6, "hardnessMax": 6.5,
                  "specificGravity": 2.55, "weightG": 41.3, "lengthMm": 42.5,
@@ -100,6 +100,7 @@ class DatabaseIntegrationTest {
         assertThat(fetched.opticalEffects()).containsExactly(OpticalEffect.IRIDESCENCE);
         assertThat(fetched.tags()).containsExactly("combo", "weird");
         assertThat(fetched.currency()).isEqualTo("PLN");
+        assertThat(fetched.whySpecial()).isEqualTo("Looks like a frog");
         assertThat(fetched.mindatUrl()).isEqualTo("https://www.mindat.org/min-54558.html");
         assertThat(fetched.createdAt()).isNotNull();
         assertThat(fetched.components()).extracting(SpecimenDto.Component::materialName).containsExactly("Orthoclase", "Amethyst");
