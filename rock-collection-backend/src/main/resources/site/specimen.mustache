@@ -58,10 +58,13 @@
   {{#identity}}
   <section class="panel" aria-labelledby="identity-title">
     <h2 id="identity-title">Scientific identity</h2>
-    {{#unidentified}}
-    <p>Unidentified. This is what I’d love help with.</p>
-    {{/unidentified}}
-    {{^unidentified}}
+    {{#status}}
+    <p class="id-status"><span class="chip{{#identified}} chip-filled{{/identified}}">{{label}}</span>{{#note}}<span>{{.}}</span>{{/note}}</p>
+    {{/status}}
+    {{#noComponents}}
+    <p>No materials listed yet.</p>
+    {{/noComponents}}
+    {{#hasComponents}}
     <ul class="components">
       {{#components}}
       <li>
@@ -74,7 +77,7 @@
       </li>
       {{/components}}
     </ul>
-    {{/unidentified}}
+    {{/hasComponents}}
   </section>
   {{/identity}}
 

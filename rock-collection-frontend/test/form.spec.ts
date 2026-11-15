@@ -323,3 +323,45 @@ test('A new material can be created from inside the specimen form; Type comes fr
     if (material) await request.delete(`${API}/materials/${material.id}`);
   }
 });
+
+test('The identification status is set by hand, shown in the details and the table, and sorts by certainty', async ({ page, request }) => {
+  const name = `Status test ${Date.now()}`;
+  // A confirmed material doesn't make it identified: the status is the owner's call
+  const material = (await (await request.get(`${API}/materials`)).json())[0];
+  const specimen = await createSpecimen(request, { name, components: [{ materialId: material.id, certainty: 'CONFIRMED' }] });
+  const other = await createSpecimen(request, { name: `${name} known`, identificationStatus: 'IDENTIFIED' });
+  try {
+    expect((await (await request.get(`${API}/specimens/${specimen.id}`)).json()).identificationStatus).toBe('UNIDENTIFIED');
+
+    await page.goto('/');
+    await page.getByRole('searchbox', { name: 'Search specimens' }).fill(name);
+    await expect(page.getByRole('row', { name: new RegExp(`${name} known`) })).toBeVisible();
+    await page.getByRole('cell', { name, exact: true }).click();
+    const detail = page.getByRole('dialog', { name: `#${specimen.id} ${name}` });
+    await expect(detail.getByRole('region', { name: 'Scientific identity' }).getByText('Unidentified', { exact: true })).toBeVisible();
+
+    await detail.getByRole('button', { name: 'Edit' }).click();
+    const form = page.getByRole('dialog', { name: `Edit #${specimen.id}` });
+    await form.getByRole('combobox', { name: 'Identification status' }).click();
+    await page.getByRole('option', { name: 'Possible ID' }).click();
+    await expect(form.getByText('There’s an idea of what it is, but it’s only a guess.', { exact: false })).toBeVisible();
+    await form.getByRole('button', { name: 'Save' }).click();
+
+    const updated = page.getByRole('dialog', { name: `#${specimen.id} ${name}` });
+    await expect(updated.getByRole('region', { name: 'Scientific identity' }).getByText('Possible ID', { exact: true })).toBeVisible();
+    expect((await (await request.get(`${API}/specimens/${specimen.id}`)).json()).identificationStatus).toBe('POSSIBLE_ID');
+    await page.keyboard.press('Escape');
+    await expect(updated).toBeHidden();
+
+    // The column (shown by default) sorts by certainty: possible ID before identified, then the other way round
+    const table = page.getByRole('table', { name: 'Specimens' });
+    await table.getByRole('button', { name: 'Identification' }).click();
+    await expect(table.getByRole('row').nth(1)).toContainText('Possible ID');
+    await expect(table.getByRole('row').nth(2)).toContainText('Identified');
+    await table.getByRole('button', { name: 'Identification' }).click();
+    await expect(table.getByRole('row').nth(1)).toContainText(`${name} known`);
+  } finally {
+    await request.delete(`${API}/specimens/${specimen.id}`);
+    await request.delete(`${API}/specimens/${other.id}`);
+  }
+});

@@ -125,6 +125,21 @@ class DatabaseIntegrationTest {
         assertThat(created.components()).isEmpty();
         assertThat(created.tags()).isEqualTo(List.of());
         assertThat(created.specialProperties()).isEmpty();
+        assertThat(created.identificationStatus()).isEqualTo(IdentificationStatus.UNIDENTIFIED);
+    }
+
+    @Test
+    void identificationStatusSortsByCertainty() {
+        JsonMapper json = JsonMapper.builder().build();
+        for (String status : List.of("IDENTIFIED", "UNIDENTIFIED", "PARTIALLY_IDENTIFIED", "POSSIBLE_ID")) {
+            specimenService.create(json.readValue("{\"name\": \"Ranked " + status + "\", \"identificationStatus\": \"" + status + "\"}",
+                    SpecimenDto.Request.class));
+        }
+
+        assertThat(specimenService.findPage(0, 25, "identificationStatus", org.springframework.data.domain.Sort.Direction.ASC, "Ranked ")
+                .content()).extracting(SpecimenDto.Summary::identificationStatus).containsExactly(
+                IdentificationStatus.UNIDENTIFIED, IdentificationStatus.POSSIBLE_ID,
+                IdentificationStatus.PARTIALLY_IDENTIFIED, IdentificationStatus.IDENTIFIED);
     }
 
     @Test

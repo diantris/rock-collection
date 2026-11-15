@@ -40,6 +40,13 @@ public class Specimen {
     @Enumerated(EnumType.STRING)
     private SpecimenNature nature;
     private String treatmentNotes;
+    /** How far the owner considers it identified; set by them, never worked out from the components. */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private IdentificationStatus identificationStatus = IdentificationStatus.UNIDENTIFIED;
+    /** Worked out by the database from the status (0 = unidentified … 3 = identified); only used for sorting. */
+    @Column(insertable = false, updatable = false)
+    private Short identificationRank;
 
     // Observed / measured properties of this particular specimen
     private String color;
@@ -139,6 +146,8 @@ public class Specimen {
     public void setForm(SpecimenForm form) { this.form = form; }
     public SpecimenNature getNature() { return nature; }
     public void setNature(SpecimenNature nature) { this.nature = nature; }
+    public IdentificationStatus getIdentificationStatus() { return identificationStatus; }
+    public void setIdentificationStatus(IdentificationStatus identificationStatus) { this.identificationStatus = identificationStatus; }
     public String getTreatmentNotes() { return treatmentNotes; }
     public void setTreatmentNotes(String treatmentNotes) { this.treatmentNotes = treatmentNotes; }
     public String getColor() { return color; }

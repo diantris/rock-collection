@@ -61,6 +61,10 @@ final class SiteLabels {
             ComponentRole.HOST, "Host", ComponentRole.INCLUSION, "Inclusion", ComponentRole.ASSOCIATED, "Associated",
             ComponentRole.MATRIX, "Matrix component");
 
+    static final Map<IdentificationStatus, String> STATUS = Map.of(
+            IdentificationStatus.UNIDENTIFIED, "Unidentified", IdentificationStatus.POSSIBLE_ID, "Possible ID",
+            IdentificationStatus.PARTIALLY_IDENTIFIED, "Partially identified", IdentificationStatus.IDENTIFIED, "Identified");
+
     static final Map<IdentificationCertainty, String> CERTAINTY = Map.of(
             IdentificationCertainty.CONFIRMED, "Confirmed", IdentificationCertainty.TENTATIVE, "Tentative",
             IdentificationCertainty.SELLER_CLAIM, "Seller's claim");

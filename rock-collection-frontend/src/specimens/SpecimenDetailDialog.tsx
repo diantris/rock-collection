@@ -8,7 +8,8 @@ import {
 import { fetchSpecimen } from './api';
 import PhotosSection from './PhotosSection';
 import {
-  ACQUISITION_LABELS, CERTAINTY_LABELS, CRYSTAL_SYSTEM_LABELS, FAMILY_LABELS, FORM_LABELS, MATERIAL_CATEGORY_LABELS,
+  ACQUISITION_LABELS, CERTAINTY_LABELS, CRYSTAL_SYSTEM_LABELS, FAMILY_LABELS, FORM_LABELS, IDENTIFICATION_STATUS_LABELS,
+  MATERIAL_CATEGORY_LABELS,
   NATURE_LABELS, OPTICAL_EFFECT_LABELS, ROLE_SHORT_LABELS, SPECIAL_PROPERTY_LABELS, SpecimenDetail,
 } from './types';
 
@@ -118,8 +119,14 @@ const SpecimenDetailDialog: React.FC<Props> = ({ specimenId, refreshKey = 0, onC
               ['Nature', s.nature && NATURE_LABELS[s.nature]],
               ['Unidentified components', s.inclusions],
             ]}>
+              {/* The owner's own call, so it comes before the materials (which don't decide it) */}
+              <Stack direction="row" sx={{ gap: 1, alignItems: 'center', mb: 1.5 }}>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>Identification status</Typography>
+                <Chip size="small" label={IDENTIFICATION_STATUS_LABELS[s.identificationStatus]}
+                  variant={s.identificationStatus === 'IDENTIFIED' ? 'filled' : 'outlined'} />
+              </Stack>
               {s.components.length === 0 ? (
-                <Typography variant="body2" sx={{ mb: 1 }}>Unidentified</Typography>
+                <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>No materials listed yet</Typography>
               ) : (
                 <Stack sx={{ gap: 1, mb: 1.5 }}>
                   {s.components.map((c, i) => (

@@ -37,6 +37,7 @@ public class SpecimenService {
             Map.entry("marketName", "marketName"),
             Map.entry("form", "form"),
             Map.entry("nature", "nature"),
+            Map.entry("identificationStatus", "identificationRank"), // by certainty, not alphabetically
             Map.entry("country", "country"),
             Map.entry("acquisitionType", "acquisitionType"),
             Map.entry("acquiredFrom", "acquiredFrom"),
@@ -152,6 +153,7 @@ public class SpecimenService {
         s.setForm(r.form());
         s.setNature(r.nature());
         s.setTreatmentNotes(blankToNull(r.treatmentNotes()));
+        if (r.identificationStatus() != null) s.setIdentificationStatus(r.identificationStatus());
 
         s.setColor(blankToNull(r.color()));
         s.setSecondaryColor(blankToNull(r.secondaryColor()));

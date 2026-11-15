@@ -116,11 +116,9 @@ h2 { font-size: 1rem; line-height: 1.5rem; font-weight: 500; letter-spacing: 0.1
   border: 1px solid var(--md-outline); background: transparent; color: var(--md-on-surface-variant);
   font-family: inherit; font-size: 0.875rem; font-weight: 500; letter-spacing: 0.1px;
 }
-.chip-filled, .chip-toggle[aria-pressed="true"] {
+.chip-filled {
   border-color: transparent; background: var(--md-secondary-container); color: var(--md-on-secondary-container);
 }
-.chip-toggle { cursor: pointer; }
-.chip-toggle[aria-pressed="true"]::before { content: "✓"; margin-right: 8px; }
 
 /* ---- specimen page ---------------------------------------------------------------------------------------------- */
 
@@ -209,6 +207,9 @@ dt { color: var(--md-on-surface-variant); }
 dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* Components: the name on the left, its role and certainty on the right, the material's details underneath */
+/* The owner's identification status, above the components */
+.id-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; }
+.id-status:last-child { margin-bottom: 0; }
 .components { list-style: none; margin: 0; padding: 0; }
 .components li {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px;

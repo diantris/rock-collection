@@ -4,7 +4,8 @@ import { Box, Chip, Stack, Tooltip, Typography } from '@mui/material';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { thumbnailUrl } from './api';
 import {
-  ACQUISITION_LABELS, CERTAINTY_LABELS, Component, FAMILY_LABELS, FORM_LABELS, NATURE_TYPE_LABELS, NATURE_LABELS,
+  ACQUISITION_LABELS, CERTAINTY_LABELS, Component, FAMILY_LABELS, FORM_LABELS, IDENTIFICATION_STATUS_LABELS,
+  NATURE_TYPE_LABELS, NATURE_LABELS,
   ROLE_SHORT_LABELS, SpecimenSortKey, SpecimenSummary,
 } from './types';
 
@@ -18,7 +19,7 @@ export const wrappingChipSx = { height: 'auto', minHeight: 24, maxWidth: '100%',
 
 /** Chip per material, e.g. "Garnet · inclusion" — outlined unless the identification is confirmed. */
 export const ComponentChips: React.FC<{ components: Component[] }> = ({ components }) =>
-  components.length === 0 ? <Unknown text="unidentified" /> : (
+  components.length === 0 ? <Unknown text="no materials" /> : (
     <Stack direction="row" sx={{ gap: 0.5, flexWrap: 'wrap' }}>
       {components.map((c, i) => (
         <Tooltip key={i} title={`${ROLE_SHORT_LABELS[c.role]} · ${CERTAINTY_LABELS[c.certainty]}`}>
@@ -68,6 +69,11 @@ export const COLUMNS: ColumnDef[] = [
   },
   { id: 'whySpecial', label: 'Why it’s special', defaultVisible: false, width: 280, render: s => s.whySpecial ?? <Unknown text="—" /> },
   { id: 'marketName', label: 'Market name', sortKey: 'marketName', defaultVisible: true, width: 220, render: s => orUnknown(s.marketName) },
+  {
+    id: 'identificationStatus', label: 'Identification', sortKey: 'identificationStatus', defaultVisible: true, width: 160,
+    // Sorted by certainty (unidentified first), not alphabetically
+    render: s => IDENTIFICATION_STATUS_LABELS[s.identificationStatus],
+  },
   { id: 'materials', label: 'Scientific identity', defaultVisible: false, width: 280, render: s => <ComponentChips components={s.components} /> },
   { id: 'type', label: 'Type', defaultVisible: true, width: 120, render: s => orUnknown(s.nature && NATURE_TYPE_LABELS[s.nature]) },
   { id: 'family', label: 'Family', defaultVisible: true, width: 150, render: s => orUnknown(s.family && FAMILY_LABELS[s.family]) },

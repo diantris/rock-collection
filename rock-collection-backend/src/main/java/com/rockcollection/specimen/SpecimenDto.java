@@ -36,10 +36,11 @@ public final class SpecimenDto {
 
     /**
      * Row in the paginated specimen table. {@code family} comes from the primary component
-     * (first HOST, else first component) and is null for unidentified specimens; the table's type comes from {@code nature}.
+     * (first HOST, else first component) and is null for specimens without components; the table's type comes from {@code nature}.
      */
     public record Summary(
-            Long id, String name, String marketName, String whySpecial, List<Component> components,
+            Long id, String name, String marketName, String whySpecial,
+            IdentificationStatus identificationStatus, List<Component> components,
             MaterialFamily family,
             SpecimenForm form, SpecimenNature nature, String country,
             AcquisitionType acquisitionType, String acquiredFrom, String acquiredCountry, Integer acquiredYear,
@@ -49,7 +50,7 @@ public final class SpecimenDto {
         static Summary from(Specimen s, Long thumbnailVersion) {
             SpecimenComponent primary = s.primaryComponent();
             return new Summary(s.getId(), s.getName(), s.getMarketName(), s.getWhySpecial(),
-                    s.getComponents().stream().map(Component::from).toList(),
+                    s.getIdentificationStatus(), s.getComponents().stream().map(Component::from).toList(),
                     primary != null ? primary.getMaterial().getFamily() : null,
                     s.getForm(), s.getNature(), s.getCountry(),
                     s.getAcquisitionType(), s.getAcquiredFrom(), s.getAcquiredCountry(), s.getAcquiredYear(),
@@ -62,7 +63,7 @@ public final class SpecimenDto {
     public record Detail(
             Long id, String name, String marketName, String whySpecial,
             SpecimenForm form, SpecimenNature nature, String treatmentNotes,
-            List<Component> components,
+            IdentificationStatus identificationStatus, List<Component> components,
             String color, String secondaryColor, String luster, String transparency, String streak,
             BigDecimal hardnessMin, BigDecimal hardnessMax, String cleavage, String fracture, String crystalHabit,
             BigDecimal specificGravity, Set<SpecialProperty> specialProperties, Set<OpticalEffect> opticalEffects,
@@ -76,7 +77,7 @@ public final class SpecimenDto {
         static Detail from(Specimen s) {
             return new Detail(s.getId(), s.getName(), s.getMarketName(), s.getWhySpecial(),
                     s.getForm(), s.getNature(), s.getTreatmentNotes(),
-                    s.getComponents().stream().map(Component::from).toList(),
+                    s.getIdentificationStatus(), s.getComponents().stream().map(Component::from).toList(),
                     s.getColor(), s.getSecondaryColor(), s.getLuster(), s.getTransparency(), s.getStreak(),
                     s.getHardnessMin(), s.getHardnessMax(), s.getCleavage(), s.getFracture(), s.getCrystalHabit(),
                     s.getSpecificGravity(),
@@ -100,6 +101,8 @@ public final class SpecimenDto {
             @Size(max = 255) String marketName,
             String whySpecial,
             SpecimenForm form, SpecimenNature nature, String treatmentNotes,
+            /** Left out (null): an update keeps the current value, a new specimen is unidentified. */
+            IdentificationStatus identificationStatus,
             List<@Valid ComponentRequest> components,
             @Size(max = 255) String color, @Size(max = 255) String secondaryColor,
             @Size(max = 255) String luster, @Size(max = 255) String transparency, @Size(max = 255) String streak,

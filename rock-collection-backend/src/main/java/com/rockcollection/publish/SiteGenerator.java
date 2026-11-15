@@ -86,13 +86,21 @@ public class SiteGenerator {
     // ---- index ------------------------------------------------------------------------------------------------------
 
     record IndexPage(String root, String pageTitle, String pageDescription, List<String> intro, String countLabel,
-                     long unidentifiedCount, boolean showIdentity, List<Card> cards, boolean hasCards) {}
+                     List<StatusCount> statusCounts, boolean showIdentity, boolean showStatus, List<Card> cards,
+                     boolean hasCards) {}
 
-    /** A tile: the cover photo, the name and, under a divider, why it's special. The materials are only searched. */
-    record Card(Long id, String name, String href, String image, String whySpecial, boolean unidentified, String search) {}
+    /**
+     * A tile: the cover photo, the name and, under a divider, why it's special. The materials are only searched.
+     * {@code status} (e.g. "possible-id") is for the status filter; empty when the status isn't published.
+     */
+    record Card(Long id, String name, String href, String image, String whySpecial, String status, String search) {}
+
+    /** How many published specimens have one identification status; only statuses in use are listed. */
+    record StatusCount(String key, String label, long count, String summary) {}
 
     private IndexPage index(Content content) {
         boolean showIdentity = content.fields().contains(PublishField.IDENTITY);
+        boolean showStatus = content.fields().contains(PublishField.IDENTIFICATION_STATUS);
         List<Card> cards = content.specimens().stream().map(s -> {
             List<SpecimenPhoto> photos = content.photos().getOrDefault(s.getId(), List.of());
             String identity = showIdentity ? identitySummary(s) : null;
@@ -104,16 +112,33 @@ public class SiteGenerator {
                     .filter(Objects::nonNull).collect(Collectors.joining(" ")).toLowerCase(Locale.ROOT);
             return new Card(s.getId(), s.getName(), specimenPath(s.getId()),
                     photos.isEmpty() ? null : photos.getFirst().getSmallFileName(),
-                    whySpecial.isEmpty() ? null : whySpecial, showIdentity && s.getComponents().isEmpty(), search);
+                    whySpecial.isEmpty() ? null : whySpecial, showStatus ? statusKey(s.getIdentificationStatus()) : "", search);
         }).toList();
-        long unidentified = content.specimens().stream().filter(s -> s.getComponents().isEmpty()).count();
+        Map<IdentificationStatus, Long> counts = content.specimens().stream()
+                .collect(Collectors.groupingBy(Specimen::getIdentificationStatus, () -> new EnumMap<>(IdentificationStatus.class),
+                        Collectors.counting()));
+        List<StatusCount> statusCounts = !showStatus ? List.of() : counts.entrySet().stream()
+                .map(e -> new StatusCount(statusKey(e.getKey()), SiteLabels.STATUS.get(e.getKey()), e.getValue(),
+                        e.getValue() + " " + statusInSentence(e.getKey())))
+                .toList();
         return new IndexPage("", "Rock Collection",
                 "A personal collection of rocks, minerals and cabochons, many still waiting to be identified.",
                 paragraphs(content.intro()), cards.size() == 1 ? "1 specimen" : cards.size() + " specimens",
-                unidentified, showIdentity, cards, !cards.isEmpty());
+                statusCounts, showIdentity, showStatus, cards, !cards.isEmpty());
     }
 
-    /** E.g. "Quartz, Garnet (tentative)"; null for an unidentified specimen. */
+    /** E.g. "possible-id", for the status filter. */
+    private static String statusKey(IdentificationStatus status) {
+        return status.name().toLowerCase(Locale.ROOT).replace('_', '-');
+    }
+
+    /** E.g. "possible ID", as in "12 possible ID". */
+    private static String statusInSentence(IdentificationStatus status) {
+        String label = SiteLabels.STATUS.get(status);
+        return status == IdentificationStatus.POSSIBLE_ID ? "possible ID" : label.toLowerCase(Locale.ROOT);
+    }
+
+    /** E.g. "Quartz, Garnet (tentative)"; null for a specimen without components. */
     private static String identitySummary(Specimen s) {
         if (s.getComponents().isEmpty()) return null;
         return s.getComponents().stream()
@@ -132,7 +157,14 @@ public class SiteGenerator {
 
     record PagePhoto(String src, Integer width, Integer height, String alt, String caption, int number, boolean first) {}
 
-    record Identity(boolean unidentified, List<IdentityComponent> components) {}
+    /**
+     * The "Scientific identity" panel: the owner's status (null when it isn't published) and the components (empty
+     * when they aren't published). {@code noComponents}: there are none to list and no status either, so say so.
+     */
+    record Identity(Status status, List<IdentityComponent> components, boolean hasComponents, boolean noComponents) {}
+
+    /** {@code note} is a short sentence after the status; {@code identified} fills its chip. */
+    record Status(String label, String note, boolean identified) {}
 
     record IdentityComponent(String name, String mindatUrl, String role, String certainty, boolean confirmed, String details) {}
 
@@ -156,9 +188,12 @@ public class SiteGenerator {
                     "%s, photo %d of %d".formatted(s.getName(), i + 1, photos.size()), p.getCaption(), i + 1, i == 0));
         }
 
-        Identity identity = on.test(PublishField.IDENTITY)
-                ? new Identity(s.getComponents().isEmpty(), s.getComponents().stream().map(SiteGenerator::component).toList())
-                : null;
+        boolean showComponents = on.test(PublishField.IDENTITY);
+        Status status = on.test(PublishField.IDENTIFICATION_STATUS) ? status(s.getIdentificationStatus()) : null;
+        List<IdentityComponent> components = showComponents
+                ? s.getComponents().stream().map(SiteGenerator::component).toList() : List.of();
+        Identity identity = !showComponents && status == null ? null
+                : new Identity(status, components, !components.isEmpty(), showComponents && status == null && components.isEmpty());
 
         List<Section> sections = Stream.of(
                 section("What it is", Arrays.asList(
@@ -207,6 +242,16 @@ public class SiteGenerator {
                 pagePhotos, !pagePhotos.isEmpty(), pagePhotos.size() > 1,
                 identity, sections, description, link, !description.isEmpty() || link != null,
                 webLink(messageUrl), neighbour(prev), neighbour(next));
+    }
+
+    private static Status status(IdentificationStatus status) {
+        String note = switch (status) {
+            case UNIDENTIFIED -> "This is what I’d love help with.";
+            case POSSIBLE_ID -> "Only a guess so far, so opinions are very welcome.";
+            case PARTIALLY_IDENTIFIED -> "Mostly known, but not fully identified yet.";
+            case IDENTIFIED -> null;
+        };
+        return new Status(SiteLabels.STATUS.get(status), note, status == IdentificationStatus.IDENTIFIED);
     }
 
     private static IdentityComponent component(SpecimenComponent c) {

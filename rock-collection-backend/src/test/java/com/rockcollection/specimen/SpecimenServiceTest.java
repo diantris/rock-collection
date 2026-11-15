@@ -201,6 +201,35 @@ class SpecimenServiceTest {
     }
 
     @Test
+    void identificationStatus_isTheOwnersChoice_unidentifiedUntilSet_andKeptWhenLeftOut() {
+        saveReturnsArgument();
+        when(materialService.get(1L)).thenReturn(material(1L, "Quartz", MaterialCategory.MINERAL, MaterialFamily.SILICATE));
+
+        // Components (even confirmed ones) don't change it
+        SpecimenDto.Detail created = service.create(request("""
+                {"name": "A", "components": [{"materialId": 1, "certainty": "CONFIRMED"}]}"""));
+        assertThat(created.identificationStatus()).isEqualTo(IdentificationStatus.UNIDENTIFIED);
+
+        Specimen existing = new Specimen();
+        existing.setName("B");
+        when(specimenRepository.findById(5L)).thenReturn(Optional.of(existing));
+        service.update(5L, request("{\"name\": \"B\", \"identificationStatus\": \"PARTIALLY_IDENTIFIED\"}"));
+        assertThat(existing.getIdentificationStatus()).isEqualTo(IdentificationStatus.PARTIALLY_IDENTIFIED);
+        service.update(5L, request("{\"name\": \"B\"}"));
+        assertThat(existing.getIdentificationStatus()).isEqualTo(IdentificationStatus.PARTIALLY_IDENTIFIED);
+    }
+
+    @Test
+    void findPage_byIdentificationStatus_sortsByCertaintyNotAlphabetically() {
+        when(specimenRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+
+        service.findPage(0, 25, "identificationStatus", Sort.Direction.ASC, null);
+
+        assertThat(usedPageable().getSort()).containsExactly(
+                Sort.Order.asc("identificationRank").nullsLast(), Sort.Order.asc("name"), Sort.Order.asc("id"));
+    }
+
+    @Test
     void findPage_byAColumn_ignoresPinsAndBreaksTiesByName() {
         when(specimenRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
 

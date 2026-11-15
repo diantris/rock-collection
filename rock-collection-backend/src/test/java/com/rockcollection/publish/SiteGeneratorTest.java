@@ -33,6 +33,7 @@ class SiteGeneratorTest {
         s.setMarketName("Unknown green");
         s.setWhySpecial("Looks like a tiny frog.\n\nMy sister found it.");
         s.setForm(SpecimenForm.ROUGH);
+        s.setIdentificationStatus(IdentificationStatus.POSSIBLE_ID);
         s.setColor("green");
         s.setSecondaryColor("purple");
         s.setHardnessMin(new BigDecimal("6.0"));
@@ -78,7 +79,7 @@ class SiteGeneratorTest {
     void defaultFields_publishTheEvidenceButNoPrivateOrAcquisitionDetails() {
         String page = generate(DEFAULTS, List.of(fullSpecimen()), Map.of()).get("specimens/7/index.html");
 
-        assertThat(page).contains("Scrap-bin find", "Sold as “Unknown green”", "Orthoclase", "Tentative", "Silicate",
+        assertThat(page).contains("Scrap-bin find", "Sold as “Unknown green”", "Possible ID", "Orthoclase", "Tentative", "Silicate",
                 "green, purple", "6–6.5", "2.55", "41.3 g", "42 × 30 mm", "Iridescence", "Lower Silesia, Poland",
                 "<p>Found in a scrap box.</p>", "<p>Has a tiny geode.</p>", "specimen #7");
         assertThat(page).doesNotContain("Secret Seller", "Bought", "May 2024", "1 PLN", "gift-from-mum", "PRIVATE NOTE");
@@ -100,7 +101,7 @@ class SiteGeneratorTest {
 
         assertThat(page).contains("Specimen #7", "Scrap-bin find", "../../photos/7/a.jpg");
         assertThat(page).doesNotContain("Orthoclase", "Unknown green", "green", "Lower Silesia", "scrap box", "Scientific identity");
-        assertThat(site.get("index.html")).doesNotContain("Orthoclase", "Unidentified only");
+        assertThat(site.get("index.html")).doesNotContain("Orthoclase", "data-filter-status", "possible ID", "data-status=\"possible-id\"");
     }
 
     @Test
@@ -161,14 +162,45 @@ class SiteGeneratorTest {
                 Map.of(7L, List.of(photo(7, "cover", 0), photo(7, "back", 1))));
         String index = site.get("index.html");
 
-        assertThat(index).contains("2 specimens · 1 still unidentified", "<p class=\"intro\">Hello experts.</p>",
+        assertThat(index).contains("2 specimens · 1 unidentified · 1 possible ID", "<p class=\"intro\">Hello experts.</p>",
                 "href=\"specimens/3/\"", "href=\"specimens/7/\"", "src=\"photos/7/cover-small.jpg\"",
                 "<span class=\"card-why\">Looks like a tiny frog. My sister found it.</span>",
-                "data-unidentified=\"true\"", "Unidentified only", "Featured first");
+                "data-status=\"unidentified\"", "data-status=\"possible-id\"", "Featured first",
+                "<option value=\"unidentified\">Unidentified (1)</option>", "<option value=\"possible-id\">Possible ID (1)</option>");
         assertThat(index.indexOf("Piasek Pustyni")).isLessThan(index.indexOf("Scrap-bin find"));
-        assertThat(index).doesNotContain("back", "card-number", "Orthoclase (tentative)", ">Unidentified<")
+        assertThat(index).doesNotContain("back", "card-number", "Orthoclase (tentative)", "Partially identified")
                 .contains("orthoclase (tentative)"); // the materials are still found by the search box
         assertThat(index.split("card-why")).hasSize(2); // no divider on a tile without a reason
+    }
+
+    @Test
+    void identificationStatus_isTheOwnersChoice_notWorkedOutFromTheComponents() {
+        Specimen guessed = fullSpecimen(); // a tentative orthoclase, but the owner calls it only a possible ID
+        Specimen known = specimen(8, "Rose quartz");
+        known.setIdentificationStatus(IdentificationStatus.IDENTIFIED);
+        Specimen bare = specimen(9, "Mystery"); // unidentified by default, no components
+
+        Map<String, String> site = generate(DEFAULTS, List.of(guessed, known, bare), Map.of());
+        assertThat(site.get("specimens/7/index.html")).contains(
+                "<p class=\"id-status\"><span class=\"chip\">Possible ID</span><span>Only a guess so far, so opinions are very welcome.</span></p>",
+                "Orthoclase");
+        assertThat(site.get("specimens/8/index.html")).contains("<span class=\"chip chip-filled\">Identified</span></p>")
+                .doesNotContain("No materials listed yet");
+        assertThat(site.get("specimens/9/index.html")).contains("Unidentified", "This is what I’d love help with.")
+                .doesNotContain("No materials listed yet");
+        assertThat(site.get("index.html")).contains("3 specimens · 1 unidentified · 1 possible ID · 1 identified");
+
+        // Status unticked: the components are still shown, and a stone without any says so
+        Set<PublishField> noStatus = EnumSet.copyOf(DEFAULTS);
+        noStatus.remove(PublishField.IDENTIFICATION_STATUS);
+        Map<String, String> withoutStatus = generate(noStatus, List.of(guessed, bare), Map.of());
+        assertThat(withoutStatus.get("specimens/7/index.html")).contains("Orthoclase").doesNotContain("id-status", "Possible ID");
+        assertThat(withoutStatus.get("specimens/9/index.html")).contains("No materials listed yet.").doesNotContain("Unidentified");
+        assertThat(withoutStatus.get("index.html")).doesNotContain("data-filter-status", "unidentified");
+
+        // Only the status ticked: the panel shows it, without the materials
+        Map<String, String> onlyStatus = generate(EnumSet.of(PublishField.IDENTIFICATION_STATUS), List.of(guessed), Map.of());
+        assertThat(onlyStatus.get("specimens/7/index.html")).contains("Scientific identity", "Possible ID").doesNotContain("Orthoclase");
     }
 
     @Test

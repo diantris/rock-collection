@@ -13,7 +13,8 @@ import { ApiError, createSpecimen, fetchAcquiredFrom, fetchMaterials, fetchSpeci
 import { PHOTO_TYPES } from './PhotosSection';
 import AddMaterialDialog from './AddMaterialDialog';
 import {
-  ACQUISITION_LABELS, AcquisitionType, CERTAINTY_LABELS, ComponentRole, FORM_LABELS, IdentificationCertainty, Material,
+  ACQUISITION_LABELS, AcquisitionType, CERTAINTY_LABELS, ComponentRole, FORM_LABELS, IDENTIFICATION_STATUS_HINTS,
+  IDENTIFICATION_STATUS_LABELS, IdentificationCertainty, IdentificationStatus, Material,
   NATURE_LABELS, OPTICAL_EFFECT_LABELS, OpticalEffect, ROLE_LABELS, SPECIAL_PROPERTY_LABELS, SpecialProperty, SpecimenDetail,
   SpecimenForm, SpecimenNature, SpecimenRequest,
 } from './types';
@@ -55,6 +56,7 @@ type NumberField = (typeof NUMBER_FIELDS)[number];
 type FormState = Record<TextField_ | NumberField, string> & {
   form: SpecimenForm | '';
   nature: SpecimenNature | '';
+  identificationStatus: IdentificationStatus;
   acquisitionType: AcquisitionType | '';
   specialProperties: SpecialProperty[];
   opticalEffects: OpticalEffect[];
@@ -65,7 +67,7 @@ type FormState = Record<TextField_ | NumberField, string> & {
 
 const emptyForm = (): FormState => ({
   ...(Object.fromEntries([...TEXT_FIELDS, ...NUMBER_FIELDS].map(f => [f, ''])) as Record<TextField_ | NumberField, string>),
-  form: '', nature: '', acquisitionType: '', specialProperties: [], opticalEffects: [], tags: [], published: true, gone: false,
+  form: '', nature: '', identificationStatus: 'UNIDENTIFIED', acquisitionType: '', specialProperties: [], opticalEffects: [], tags: [], published: true, gone: false,
 });
 
 function fromDetail(d: SpecimenDetail): FormState {
@@ -73,7 +75,7 @@ function fromDetail(d: SpecimenDetail): FormState {
   for (const k of TEXT_FIELDS) f[k] = d[k] ?? '';
   for (const k of NUMBER_FIELDS) f[k] = d[k] === null ? '' : String(d[k]);
   return {
-    ...f, form: d.form ?? '', nature: d.nature ?? '', acquisitionType: d.acquisitionType ?? '',
+    ...f, form: d.form ?? '', nature: d.nature ?? '', identificationStatus: d.identificationStatus, acquisitionType: d.acquisitionType ?? '',
     specialProperties: d.specialProperties, opticalEffects: d.opticalEffects, tags: d.tags, published: d.published, gone: d.gone,
   };
 }
@@ -175,7 +177,8 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
     return {
       ...body,
       currency: form.currency.trim().toUpperCase(),
-      form: form.form || null, nature: form.nature || null, acquisitionType: form.acquisitionType || null,
+      form: form.form || null, nature: form.nature || null, identificationStatus: form.identificationStatus,
+      acquisitionType: form.acquisitionType || null,
       specialProperties: form.specialProperties, opticalEffects: form.opticalEffects, tags: form.tags, published: form.published, gone: form.gone,
       components: components.filter(c => c.material !== null)
         .map(c => ({ materialId: c.material!.id, role: c.role, certainty: c.certainty })),
@@ -305,6 +308,12 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
                 renderInput={params => <TextField {...params} label="Tags" helperText="Type and press Enter" />} />,
             )}
             {row(enumSelect('form', 'Form', FORM_LABELS), enumSelect('nature', 'Nature', NATURE_LABELS))}
+            <TextField select fullWidth label="Identification status" value={form.identificationStatus}
+              onChange={e => set('identificationStatus', e.target.value as IdentificationStatus)}
+              helperText={`${IDENTIFICATION_STATUS_HINTS[form.identificationStatus]} Your call: the materials below don’t change it.`}>
+              {(Object.keys(IDENTIFICATION_STATUS_LABELS) as IdentificationStatus[]).map(k =>
+                <MenuItem key={k} value={k}>{IDENTIFICATION_STATUS_LABELS[k]}</MenuItem>)}
+            </TextField>
             {!isEdit && (
               <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
                 <Button variant="outlined" startIcon={<AddPhotoAlternateOutlinedIcon />} onClick={() => photoInput.current?.click()}>
@@ -329,7 +338,7 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
               {section('Scientific identity', SECTIONS.identity, <>
                 {components.length === 0 && (
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    No materials yet — the specimen counts as unidentified. Add your best guess as “tentative”.
+                    No materials yet. Add your best guess as “tentative”.
                   </Typography>
                 )}
                 {components.map((c, i) => (

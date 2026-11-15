@@ -3,23 +3,23 @@
 (function () {
   'use strict';
 
-  // ---- index: search and "unidentified only" -------------------------------------------------------------------
+  // ---- index: search and the status filter ----------------------------------------------------------------------
   var filters = document.querySelector('[data-filters]');
   if (filters) {
     var cards = Array.prototype.slice.call(document.querySelectorAll('.card'));
     var search = filters.querySelector('[data-filter-search]');
-    var unidentified = filters.querySelector('[data-filter-unidentified]');
+    var status = filters.querySelector('[data-filter-status]');
     var count = filters.querySelector('[data-filter-count]');
     var empty = document.querySelector('[data-filter-empty]');
 
     var apply = function () {
       var words = search.value.toLowerCase().split(/\s+/).filter(Boolean);
-      var onlyUnidentified = unidentified && unidentified.getAttribute('aria-pressed') === 'true';
+      var wantedStatus = status ? status.value : '';
       var shown = 0;
       cards.forEach(function (card) {
         var text = card.getAttribute('data-search');
         var match = words.every(function (w) { return text.indexOf(w) !== -1; })
-          && (!onlyUnidentified || card.getAttribute('data-unidentified') === 'true');
+          && (!wantedStatus || card.getAttribute('data-status') === wantedStatus);
         card.hidden = !match;
         if (match) shown++;
       });
@@ -45,12 +45,7 @@
       var sorted = orders[sort.value] ? ownerOrder.slice().sort(orders[sort.value]) : ownerOrder;
       sorted.forEach(function (card) { list.appendChild(card); });
     });
-    if (unidentified) {
-      unidentified.addEventListener('click', function () {
-        unidentified.setAttribute('aria-pressed', unidentified.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
-        apply();
-      });
-    }
+    if (status) status.addEventListener('change', apply);
     filters.hidden = false;
   }
 

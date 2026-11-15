@@ -10,15 +10,20 @@
     {{#intro}}
     <p class="intro">{{.}}</p>
     {{/intro}}
-    <p class="stats">{{countLabel}}{{#showIdentity}} · {{unidentifiedCount}} still unidentified{{/showIdentity}}</p>
+    <p class="stats">{{countLabel}}{{#statusCounts}} · {{summary}}{{/statusCounts}}</p>
   </header>
 
   {{#hasCards}}
   <div class="toolbar" data-filters hidden>
     <input type="search" class="search" placeholder="Search by name{{#showIdentity}} or material{{/showIdentity}}, or #number" aria-label="Search specimens" data-filter-search>
-    {{#showIdentity}}
-    <button type="button" class="chip chip-toggle" aria-pressed="false" data-filter-unidentified>Unidentified only</button>
-    {{/showIdentity}}
+    {{#showStatus}}
+    <label class="sort">Status
+      <select data-filter-status>
+        <option value="">All</option>
+        {{#statusCounts}}<option value="{{key}}">{{label}} ({{count}})</option>{{/statusCounts}}
+      </select>
+    </label>
+    {{/showStatus}}
     <label class="sort">Sort by
       <select data-sort>
         <option value="">Featured first</option>
@@ -33,7 +38,7 @@
 
   <ul class="cards">
     {{#cards}}
-    <li class="card" data-id="{{id}}" data-search="{{search}}" data-unidentified="{{unidentified}}">
+    <li class="card" data-id="{{id}}" data-search="{{search}}" data-status="{{status}}">
       <a href="{{href}}">
         {{#image}}<img class="card-image" src="{{.}}" alt="" loading="lazy">{{/image}}
         {{^image}}<span class="card-image card-image-empty" aria-hidden="true"></span>{{/image}}

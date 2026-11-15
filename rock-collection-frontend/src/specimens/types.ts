@@ -18,6 +18,8 @@ export type SpecimenNature =
 export type AcquisitionType = 'BOUGHT' | 'FOUND' | 'GIFT' | 'TRADED' | 'INHERITED' | 'UNKNOWN';
 export type ComponentRole = 'HOST' | 'INCLUSION' | 'ASSOCIATED' | 'MATRIX';
 export type IdentificationCertainty = 'CONFIRMED' | 'TENTATIVE' | 'SELLER_CLAIM';
+/** How far the owner considers a specimen identified; they set it, it's never worked out from the components. */
+export type IdentificationStatus = 'UNIDENTIFIED' | 'POSSIBLE_ID' | 'PARTIALLY_IDENTIFIED' | 'IDENTIFIED';
 export type SpecialProperty =
   | 'MAGNETIC' | 'FLUORESCENT' | 'PHOSPHORESCENT' | 'RADIOACTIVE' | 'EFFERVESCENT' | 'PIEZOELECTRIC'
   | 'PLEOCHROIC' | 'DOUBLE_REFRACTION' | 'TRIBOLUMINESCENT' | 'SOLUBLE' | 'TASTE';
@@ -74,6 +76,17 @@ export const ROLE_LABELS: Record<ComponentRole, string> = {
 export const ROLE_SHORT_LABELS: Record<ComponentRole, string> = {
   HOST: 'Host', INCLUSION: 'Inclusion', ASSOCIATED: 'Associated', MATRIX: 'Matrix component',
 };
+/** In order of certainty, which is also the order of the form's choice. Keep in sync with SiteLabels.STATUS. */
+export const IDENTIFICATION_STATUS_LABELS: Record<IdentificationStatus, string> = {
+  UNIDENTIFIED: 'Unidentified', POSSIBLE_ID: 'Possible ID', PARTIALLY_IDENTIFIED: 'Partially identified', IDENTIFIED: 'Identified',
+};
+/** What each status means, for the form's hint. */
+export const IDENTIFICATION_STATUS_HINTS: Record<IdentificationStatus, string> = {
+  UNIDENTIFIED: 'No idea yet what it is.',
+  POSSIBLE_ID: 'There’s an idea of what it is, but it’s only a guess.',
+  PARTIALLY_IDENTIFIED: 'More or less known, but not fully identified.',
+  IDENTIFIED: 'You’re sure what it is.',
+};
 export const CERTAINTY_LABELS: Record<IdentificationCertainty, string> = {
   CONFIRMED: 'Confirmed', TENTATIVE: 'Tentative', SELLER_CLAIM: "Seller's claim",
 };
@@ -118,6 +131,7 @@ export interface SpecimenSummary {
   marketName: string | null;
   /** Why the owner got or keeps it, whatever it really is or is worth. */
   whySpecial: string | null;
+  identificationStatus: IdentificationStatus;
   components: Component[];
   family: MaterialFamily | null;
   form: SpecimenForm | null;
@@ -165,7 +179,7 @@ export interface Page<T> {
 /** Sort keys accepted by GET /api/specimens. */
 export type SpecimenSortKey =
   | 'id' | 'name' | 'marketName' | 'form' | 'nature' | 'country' | 'acquisitionType'
-  | 'acquiredFrom' | 'acquiredCountry' | 'acquiredYear' | 'price';
+  | 'acquiredFrom' | 'acquiredCountry' | 'acquiredYear' | 'price' | 'identificationStatus';
 export type Order = 'asc' | 'desc';
 
 /** Body for POST/PUT /api/specimens. Only `name` is required; omitted fields are stored as unknown. */
@@ -174,6 +188,7 @@ export interface SpecimenRequest {
   marketName?: string | null;
   form?: SpecimenForm | null;
   nature?: SpecimenNature | null;
+  identificationStatus?: IdentificationStatus;
   components?: { materialId: number; role: ComponentRole; certainty: IdentificationCertainty }[];
   acquisitionType?: AcquisitionType | null;
   acquiredFrom?: string | null;
@@ -199,6 +214,7 @@ export interface SpecimenDetail {
   marketName: string | null;
   /** Why the owner got or keeps it, whatever it really is or is worth. */
   whySpecial: string | null;
+  identificationStatus: IdentificationStatus;
   form: SpecimenForm | null;
   nature: SpecimenNature | null;
   treatmentNotes: string | null;
