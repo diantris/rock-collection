@@ -46,6 +46,15 @@ The page adds one more limit: a browser that has sent 3 messages about a stone g
 
 To remove the box, empty the address and publish again.
 
+**Access:** the `@OnlyCurrentDoc` line at the top makes Google ask for access to this one spreadsheet only, not to all of yours. The script runs as you, and anyone who can edit the sheet can edit the script, so **never share the sheet with edit rights** (viewing is fine).
+
+**If it was first set up without that line** (before Day 13 ended), Google was given access to all your spreadsheets. To narrow it:
+1. Paste the new code and save.
+2. At myaccount.google.com/permissions (*Third-party access*), open the script's project and choose **Remove access**.
+3. In the editor, pick `doGet` in the function list next to **Run** and click **Run**. Approve as before; the prompt now mentions only the current spreadsheet.
+4. **Deploy → Manage deployments → ✏️ → Version: New version → Deploy** (the address stays the same).
+5. Send yourself a test message.
+
 **Updating the script later:** paste the new code, then choose **Deploy → Manage deployments → ✏️ → Version: New version → Deploy**. That keeps the same address. A *new* deployment would get a new address, which would have to go into the Publish dialog.
 
 **If spam ever gets through:** delete the rows. If it keeps coming, empty the address and publish to switch the box off, then ask for a CAPTCHA to be added.

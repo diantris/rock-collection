@@ -1,3 +1,9 @@
+/**
+ * @OnlyCurrentDoc
+ * Tells Google the script only needs the spreadsheet it belongs to, so it asks for access to that one, not to all of
+ * the owner's spreadsheets. (The script runs as the owner; anyone who can edit the sheet can edit the script.)
+ */
+
 // Code.gs - Google Apps Script behind the public site's message box: each message becomes a row of the Google Sheet
 // the script belongs to. Nothing is published or sent anywhere else. Set-up steps: scripts/README.md.
 //
