@@ -4,9 +4,10 @@
 {{> head}}
 </head>
 <body>
-<main class="page page-narrow">
-  <nav class="crumbs"><a href="{{root}}">← All specimens</a></nav>
+<main class="page">
+  <nav class="crumbs"><a class="button-tonal" href="{{root}}">← All specimens</a></nav>
 
+  <div class="specimen-layout">
   <header class="specimen-header">
     <p class="specimen-number">Specimen #{{id}}</p>
     <h1>{{name}}</h1>
@@ -22,6 +23,7 @@
     {{/hasTags}}
   </header>
 
+  <div class="specimen-media">
   {{#hasPhotos}}
   <section class="gallery" aria-label="Photos" tabindex="0" data-gallery>
     <button type="button" class="gallery-tool" aria-label="View photos full screen" data-gallery-expand hidden>
@@ -50,7 +52,9 @@
   {{^hasPhotos}}
   <p class="no-photos">No photos yet.</p>
   {{/hasPhotos}}
+  </div>
 
+  <div class="specimen-details">
   {{#identity}}
   <section class="panel" aria-labelledby="identity-title">
     <h2 id="identity-title">Scientific identity</h2>
@@ -62,8 +66,10 @@
       {{#components}}
       <li>
         <span class="component-name">{{#mindatUrl}}<a href="{{.}}" rel="noopener noreferrer">{{/mindatUrl}}{{name}}{{#mindatUrl}}</a>{{/mindatUrl}}</span>
-        <span class="chip">{{role}}</span>
-        <span class="chip{{#confirmed}} chip-filled{{/confirmed}}">{{certainty}}</span>
+        <span class="component-chips">
+          <span class="chip">{{role}}</span>
+          <span class="chip{{#confirmed}} chip-filled{{/confirmed}}">{{certainty}}</span>
+        </span>
         {{#details}}<span class="component-details">{{.}}</span>{{/details}}
       </li>
       {{/components}}
@@ -93,10 +99,12 @@
   {{/hasNotes}}
 
   <aside class="callout">Know what this is, or have an idea? Please mention <strong>specimen #{{id}}</strong> when you reply.</aside>
+  </div>
+  </div>
 
   <nav class="pager" aria-label="Other specimens">
-    {{#prev}}<a href="{{href}}" rel="prev">← #{{id}} {{name}}</a>{{/prev}}
-    {{#next}}<a class="pager-next" href="{{href}}" rel="next">#{{id}} {{name}} →</a>{{/next}}
+    {{#prev}}<a class="pager-link" href="{{href}}" rel="prev"><span class="pager-label">← Previous</span><span class="pager-name">#{{id}} {{name}}</span></a>{{/prev}}
+    {{#next}}<a class="pager-link pager-next" href="{{href}}" rel="next"><span class="pager-label">Next →</span><span class="pager-name">#{{id}} {{name}}</span></a>{{/next}}
   </nav>
 </main>
 <script src="{{root}}assets/site.js"></script>
