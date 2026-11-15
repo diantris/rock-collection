@@ -38,10 +38,8 @@
         {{#image}}<img class="card-image" src="{{.}}" alt="" loading="lazy">{{/image}}
         {{^image}}<span class="card-image card-image-empty" aria-hidden="true"></span>{{/image}}
         <span class="card-body">
-          <span class="card-number">#{{id}}</span>
           <span class="card-name">{{name}}</span>
-          {{#identity}}<span class="card-identity">{{.}}</span>{{/identity}}
-          {{#unidentified}}<span class="badge">Unidentified</span>{{/unidentified}}
+          {{#whySpecial}}<span class="card-why">{{.}}</span>{{/whySpecial}}
         </span>
       </a>
     </li>

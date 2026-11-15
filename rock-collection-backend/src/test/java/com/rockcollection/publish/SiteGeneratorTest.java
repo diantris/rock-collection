@@ -155,7 +155,7 @@ class SiteGeneratorTest {
     }
 
     @Test
-    void index_listsCardsWithSmallCoverPhotosAndFlagsUnidentified() {
+    void index_listsCardsWithSmallCoverPhotosNameAndWhySpecial_materialsOnlySearchable() {
         Specimen unidentified = specimen(3, "Piasek Pustyni");
         Map<String, String> site = generate(DEFAULTS, List.of(unidentified, fullSpecimen()),
                 Map.of(7L, List.of(photo(7, "cover", 0), photo(7, "back", 1))));
@@ -163,9 +163,12 @@ class SiteGeneratorTest {
 
         assertThat(index).contains("2 specimens · 1 still unidentified", "<p class=\"intro\">Hello experts.</p>",
                 "href=\"specimens/3/\"", "href=\"specimens/7/\"", "src=\"photos/7/cover-small.jpg\"",
-                "Orthoclase (tentative)", "data-unidentified=\"true\"", "Unidentified only", "Featured first");
+                "<span class=\"card-why\">Looks like a tiny frog. My sister found it.</span>",
+                "data-unidentified=\"true\"", "Unidentified only", "Featured first");
         assertThat(index.indexOf("Piasek Pustyni")).isLessThan(index.indexOf("Scrap-bin find"));
-        assertThat(index).doesNotContain("back");
+        assertThat(index).doesNotContain("back", "card-number", "Orthoclase (tentative)", ">Unidentified<")
+                .contains("orthoclase (tentative)"); // the materials are still found by the search box
+        assertThat(index.split("card-why")).hasSize(2); // no divider on a tile without a reason
     }
 
     @Test
@@ -178,8 +181,9 @@ class SiteGeneratorTest {
 
         Set<PublishField> without = EnumSet.copyOf(DEFAULTS);
         without.remove(PublishField.WHY_SPECIAL);
-        assertThat(generate(without, List.of(fullSpecimen()), Map.of()).get("specimens/7/index.html"))
-                .doesNotContain("tiny frog", "Why it’s special");
+        Map<String, String> site = generate(without, List.of(fullSpecimen()), Map.of());
+        assertThat(site.get("specimens/7/index.html")).doesNotContain("tiny frog", "Why it’s special");
+        assertThat(site.get("index.html")).doesNotContain("tiny frog", "card-why");
     }
 
     @Test

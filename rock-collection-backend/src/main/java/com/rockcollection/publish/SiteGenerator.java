@@ -79,7 +79,8 @@ public class SiteGenerator {
     record IndexPage(String root, String pageTitle, String pageDescription, List<String> intro, String countLabel,
                      long unidentifiedCount, boolean showIdentity, List<Card> cards, boolean hasCards) {}
 
-    record Card(Long id, String name, String href, String image, String identity, boolean unidentified, String search) {}
+    /** A tile: the cover photo, the name and, under a divider, why it's special. The materials are only searched. */
+    record Card(Long id, String name, String href, String image, String whySpecial, boolean unidentified, String search) {}
 
     private IndexPage index(Content content) {
         boolean showIdentity = content.fields().contains(PublishField.IDENTITY);
@@ -88,11 +89,13 @@ public class SiteGenerator {
             String identity = showIdentity ? identitySummary(s) : null;
             String marketName = content.fields().contains(PublishField.MARKET_NAME) ? s.getMarketName() : null;
             String tags = content.fields().contains(PublishField.TAGS) ? String.join(" ", s.getTags()) : null;
-            String search = Stream.of("#" + s.getId(), s.getName(), marketName, identity, tags)
+            String whySpecial = content.fields().contains(PublishField.WHY_SPECIAL)
+                    ? String.join(" ", paragraphs(s.getWhySpecial())) : "";
+            String search = Stream.of("#" + s.getId(), s.getName(), whySpecial, marketName, identity, tags)
                     .filter(Objects::nonNull).collect(Collectors.joining(" ")).toLowerCase(Locale.ROOT);
             return new Card(s.getId(), s.getName(), specimenPath(s.getId()),
                     photos.isEmpty() ? null : photos.getFirst().getSmallFileName(),
-                    identity, showIdentity && s.getComponents().isEmpty(), search);
+                    whySpecial.isEmpty() ? null : whySpecial, showIdentity && s.getComponents().isEmpty(), search);
         }).toList();
         long unidentified = content.specimens().stream().filter(s -> s.getComponents().isEmpty()).count();
         return new IndexPage("", "Rock Collection",
