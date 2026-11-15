@@ -2,6 +2,7 @@ services:
   db:
     image: postgres:18
     container_name: rockcollection-db
+    restart: unless-stopped # start again with Docker Desktop, unless stopped by hand
     environment:
       POSTGRES_DB: rockdb
       POSTGRES_USER: rockuser
@@ -33,7 +34,7 @@ services:
       GITHUB_PAGES_BRANCH: ${GITHUB_PAGES_BRANCH:-main}
     ports:
       - "8080:8080"
-    restart: on-failure
+    restart: unless-stopped
 
   frontend:
     build:
@@ -46,7 +47,7 @@ services:
       - "3000:3000"
     depends_on:
       - api
-    restart: on-failure
+    restart: unless-stopped
 
 volumes:
   db_data:
