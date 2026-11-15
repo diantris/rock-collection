@@ -13,15 +13,20 @@ const FIELDS: Field[] = [
 
 async function mockPublishApi(page: Page, overrides: Partial<{ publicCount: number; goneCount: number; gitHubConfigured: boolean; changed: boolean }> = {}) {
   const state = {
-    fields: FIELDS.map(f => ({ ...f })), intro: 'Hello experts.', lastPublishedAt: null as string | null,
+    fields: FIELDS.map(f => ({ ...f })), intro: 'Hello experts.', messageUrl: null as string | null, lastPublishedAt: null as string | null,
     siteUrl: 'https://owner.github.io/pages/', publicCount: overrides.publicCount ?? 3, goneCount: overrides.goneCount ?? 0, totalCount: 3,
     gitHubConfigured: overrides.gitHubConfigured ?? true,
   };
-  const calls = { saved: [] as { fields: string[]; intro: string }[], published: 0, showAll: 0 };
+  const calls = { saved: [] as { fields: string[]; intro: string; messageUrl: string }[], published: 0, showAll: 0 };
   await page.route('**/api/publish/settings', async route => {
     if (route.request().method() === 'PUT') {
       const body = route.request().postDataJSON();
       calls.saved.push(body);
+      if (body.messageUrl && !body.messageUrl.trim().startsWith('https://')) {
+        await route.fulfill({ status: 400, json: { messageUrl: 'messageUrl must be an https:// address' } });
+        return;
+      }
+      state.messageUrl = body.messageUrl.trim() || null;
       state.fields = state.fields.map(f => ({ ...f, included: body.fields.includes(f.key) }));
       state.intro = body.intro;
     }
@@ -39,7 +44,7 @@ async function mockPublishApi(page: Page, overrides: Partial<{ publicCount: numb
   return calls;
 }
 
-test('Publish dialog saves ticked fields, the intro, and publishes', async ({ page }) => {
+test('Publish dialog saves ticked fields, the intro, the message box address, and publishes', async ({ page }) => {
   const calls = await mockPublishApi(page);
   await page.goto('/');
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
@@ -58,6 +63,17 @@ test('Publish dialog saves ticked fields, the intro, and publishes', async ({ pa
   await intro.fill('Please help me identify these.');
   await intro.blur();
   await expect.poll(() => calls.saved.at(-1)?.intro).toBe('Please help me identify these.');
+
+  // The message box address: refused unless it's https, shown under the field
+  const messageUrl = dialog.getByRole('textbox', { name: 'Message box address' });
+  await messageUrl.fill('script.google.com/macros/s/abc/exec');
+  await messageUrl.blur();
+  await expect(dialog.getByText('Not saved: paste the whole address, starting with https://')).toBeVisible();
+  await messageUrl.fill('https://script.google.com/macros/s/abc/exec');
+  await messageUrl.blur();
+  await expect.poll(() => calls.saved.at(-1)?.messageUrl).toBe('https://script.google.com/macros/s/abc/exec');
+  await expect(dialog.getByText('Not saved: paste the whole address, starting with https://')).toHaveCount(0);
+  expect(calls.saved.at(-1)?.intro).toBe('Please help me identify these.');
 
   await dialog.getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(dialog.getByText('Published 3 specimens.')).toBeVisible();

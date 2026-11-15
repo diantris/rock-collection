@@ -53,14 +53,29 @@ class PublishServiceTest {
     }
 
     @Test
-    void updateSettings_storesFieldNamesAndBlankIntroAsNull() {
+    void updateSettings_storesFieldNamesAndBlankTextAsNull() {
         PublishSettings existing = new PublishSettings();
+        existing.setMessageUrl("https://script.google.com/macros/s/old/exec");
         when(settingsRepository.findById(PublishSettings.ID)).thenReturn(Optional.of(existing));
 
-        service.updateSettings(new PublishDto.SettingsRequest(EnumSet.of(PublishField.STREAK, PublishField.COLOR), "   "));
+        service.updateSettings(new PublishDto.SettingsRequest(EnumSet.of(PublishField.STREAK, PublishField.COLOR), "   ", " "));
 
         assertThat(existing.getFields()).containsExactly("COLOR", "STREAK");
         assertThat(existing.getIntro()).isNull();
+        assertThat(existing.getMessageUrl()).isNull();
+    }
+
+    @Test
+    void updateSettings_storesTheMessageBoxAddressTrimmed() {
+        PublishSettings existing = new PublishSettings();
+        when(settingsRepository.findById(PublishSettings.ID)).thenReturn(Optional.of(existing));
+        when(settingsRepository.save(existing)).thenReturn(existing);
+
+        PublishDto.Settings settings = service.updateSettings(new PublishDto.SettingsRequest(
+                EnumSet.noneOf(PublishField.class), "Hi", "  https://script.google.com/macros/s/abc/exec\n"));
+
+        assertThat(existing.getMessageUrl()).isEqualTo("https://script.google.com/macros/s/abc/exec");
+        assertThat(settings.messageUrl()).isEqualTo("https://script.google.com/macros/s/abc/exec");
     }
 
     @Test
@@ -68,6 +83,7 @@ class PublishServiceTest {
     void publish_commitsTheGeneratedSiteAndLeavesPhotosAlone() {
         PublishSettings settings = new PublishSettings();
         settings.setFields(new ArrayList<>(List.of("IDENTITY")));
+        settings.setMessageUrl("https://script.google.com/macros/s/abc/exec");
         when(settingsRepository.findById(PublishSettings.ID)).thenReturn(Optional.of(settings));
         Specimen s = new Specimen();
         ReflectionTestUtils.setField(s, "id", 4L);
@@ -82,6 +98,8 @@ class PublishServiceTest {
         ArgumentCaptor<Predicate<String>> managed = ArgumentCaptor.forClass(Predicate.class);
         verify(gitHub).replaceAll(eq("Publish 1 specimen"), files.capture(), managed.capture());
         assertThat(files.getValue()).containsKeys("index.html", "specimens/4/index.html");
+        assertThat(new String(files.getValue().get("specimens/4/index.html"), java.nio.charset.StandardCharsets.UTF_8))
+                .contains("data-message");
         assertThat(managed.getValue().test("photos/4/4-abc.jpg")).isFalse();
         assertThat(result.changed()).isTrue();
         assertThat(result.siteUrl()).isEqualTo("https://owner.github.io/pages/");

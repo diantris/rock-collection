@@ -1,12 +1,12 @@
-// PublishDialog.tsx - Global publish settings (which fields, intro text) and the Publish button for the public site.
+// PublishDialog.tsx - Global publish settings (which fields, intro text, message box) and the Publish button for the public site.
 // Settings are saved as they change; there is no per-specimen field choice, only each specimen's "public" switch.
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel,
   Link, Stack, TextField, Typography, useMediaQuery, useTheme,
 } from '@mui/material';
-import { fetchPublishSettings, publishAllSpecimens, publishSite, updatePublishSettings } from './api';
-import { PublishResult, PublishSettings } from './types';
+import { ApiError, fetchPublishSettings, publishAllSpecimens, publishSite, updatePublishSettings } from './api';
+import { PublishFieldKey, PublishResult, PublishSettings } from './types';
 
 interface Props {
   open: boolean;
@@ -21,6 +21,8 @@ const PublishDialog: React.FC<Props> = ({ open, onClose, onSpecimensChanged }) =
   const fullScreen = useMediaQuery(useTheme().breakpoints.down('sm'));
   const [settings, setSettings] = useState<PublishSettings | null>(null);
   const [intro, setIntro] = useState('');
+  const [messageUrl, setMessageUrl] = useState('');
+  const [messageUrlError, setMessageUrlError] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [result, setResult] = useState<PublishResult | null>(null);
@@ -31,7 +33,7 @@ const PublishDialog: React.FC<Props> = ({ open, onClose, onSpecimensChanged }) =
     setError(null);
     setSettings(null);
     fetchPublishSettings()
-      .then(s => { setSettings(s); setIntro(s.intro ?? ''); })
+      .then(s => { setSettings(s); setIntro(s.intro ?? ''); setMessageUrl(s.messageUrl ?? ''); })
       .catch(e => setError((e as Error).message));
   }, [open]);
 
@@ -42,12 +44,15 @@ const PublishDialog: React.FC<Props> = ({ open, onClose, onSpecimensChanged }) =
     return [...byGroup.entries()];
   }, [settings]);
 
-  const save = async (fields: string[], introText: string) => {
+  // Always sends every setting: the server replaces them all
+  const save = async (fields: PublishFieldKey[], texts: { intro?: string; messageUrl?: string } = {}) => {
     try {
-      setSettings(await updatePublishSettings(fields, introText));
+      setSettings(await updatePublishSettings({ fields, intro: texts.intro ?? intro, messageUrl: texts.messageUrl ?? messageUrl }));
       setError(null);
+      setMessageUrlError(false);
     } catch (e) {
-      setError((e as Error).message);
+      if (e instanceof ApiError && e.fieldErrors.messageUrl) setMessageUrlError(true);
+      else setError((e as Error).message);
     }
   };
 
@@ -58,7 +63,7 @@ const PublishDialog: React.FC<Props> = ({ open, onClose, onSpecimensChanged }) =
     // Show the tick straight away, then save
     const fields = settings.fields.map(f => (f.key === key ? { ...f, included: checked } : f));
     setSettings({ ...settings, fields });
-    void save(fields.filter(f => f.included).map(f => f.key), intro);
+    void save(fields.filter(f => f.included).map(f => f.key));
   };
 
   const showAll = async () => {
@@ -135,8 +140,16 @@ const PublishDialog: React.FC<Props> = ({ open, onClose, onSpecimensChanged }) =
 
             <TextField label="Introduction on the site’s front page" multiline minRows={3} value={intro}
               onChange={e => setIntro(e.target.value)}
-              onBlur={() => { if (intro !== (settings.intro ?? '')) void save(included(settings), intro); }}
+              onBlur={() => { if (intro !== (settings.intro ?? '')) void save(included(settings)); }}
               helperText="A blank line starts a new paragraph" />
+
+            <TextField label="Message box address" value={messageUrl} placeholder="https://script.google.com/macros/s/…/exec"
+              onChange={e => setMessageUrl(e.target.value)} error={messageUrlError}
+              onBlur={() => { if (messageUrl.trim() !== (settings.messageUrl ?? '')) void save(included(settings)); }}
+              helperText={messageUrlError ? 'Not saved: paste the whole address, starting with https://' : <>
+                The Google Apps Script web app that saves visitors’ messages in your Google Sheet (set-up steps
+                in <code>scripts/README.md</code>). Each specimen page then gets a message box; leave it empty for none.
+              </>} />
 
             {settings.siteUrl && (
               <Typography variant="body2" sx={{ color: 'text.secondary' }}>

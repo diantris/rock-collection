@@ -24,6 +24,8 @@ public class PublishSettings {
     private List<String> fields = new ArrayList<>();
     /** Text at the top of the public index page; blank lines separate paragraphs. */
     private String intro;
+    /** Where the specimen pages' message box sends messages (a Google Apps Script web app); null for no box. */
+    private String messageUrl;
     private Instant lastPublishedAt;
     private String lastCommit;
 
@@ -31,6 +33,8 @@ public class PublishSettings {
     public void setFields(List<String> fields) { this.fields = fields; }
     public String getIntro() { return intro; }
     public void setIntro(String intro) { this.intro = intro; }
+    public String getMessageUrl() { return messageUrl; }
+    public void setMessageUrl(String messageUrl) { this.messageUrl = messageUrl; }
     public Instant getLastPublishedAt() { return lastPublishedAt; }
     public void setLastPublishedAt(Instant lastPublishedAt) { this.lastPublishedAt = lastPublishedAt; }
     public String getLastCommit() { return lastCommit; }

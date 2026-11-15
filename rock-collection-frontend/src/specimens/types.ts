@@ -259,6 +259,8 @@ export interface PublishFieldSetting {
 export interface PublishSettings {
   fields: PublishFieldSetting[];
   intro: string | null;
+  /** Where the specimen pages' message box sends messages (a Google Apps Script web app); null for no box. */
+  messageUrl: string | null;
   lastPublishedAt: string | null;
   /** Address of the public site; null when GitHub isn't set up. */
   siteUrl: string | null;

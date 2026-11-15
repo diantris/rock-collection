@@ -233,6 +233,39 @@ dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
   background: var(--md-primary-container); color: var(--md-on-primary-container);
 }
 
+/* The message box (only when the owner has set it up): one text box and Send; site.js shows it and sends it */
+.message-box h2 { margin: 0 0 12px; font-size: 1rem; font-weight: 500; }
+.message-box textarea {
+  display: block; box-sizing: border-box; width: 100%; min-height: 96px; padding: 12px 16px; resize: vertical;
+  border: 1px solid var(--md-outline); border-radius: 12px;
+  background: var(--md-surface); color: var(--md-on-surface); font: inherit;
+}
+.message-box textarea:focus { outline: 2px solid var(--md-primary); border-color: transparent; }
+.message-actions { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.message-note { flex: 1; margin: 0; font-size: 0.8125rem; }
+.message-count { font-size: 0.8125rem; white-space: nowrap; }
+.message-status { margin: 0; }
+.message-status:empty { display: none; }
+.message-status:focus { outline: none; }
+.message-box form + .message-status { margin-top: 8px; }
+.message-box form[hidden] + .message-status { margin-top: 0; }
+.message-box noscript p { margin: 0; }
+/* Hidden trap field: people never see it, bots that fill in every field give themselves away */
+.message-trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.button-filled {
+  min-height: 40px; padding: 0 24px; border: 0; border-radius: 20px; cursor: pointer;
+  background: var(--md-primary); color: var(--md-on-primary);
+  font: inherit; font-weight: 500; font-size: 0.875rem; letter-spacing: 0.1px;
+}
+.button-filled:hover { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); }
+.button-filled:focus-visible { outline: 2px solid var(--md-on-primary-container); outline-offset: 2px; }
+.button-filled:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
+@media (max-width: 560px) {
+  .message-actions { flex-wrap: wrap; }
+  .message-note { flex-basis: 100%; }
+  .message-count { margin-right: auto; }
+}
+
 /* Previous / next: two tonal cards at the foot of the page */
 .pager { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 40px; }
 .pager-link {

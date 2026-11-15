@@ -14,3 +14,35 @@ Both read `PHOTOS_DIR` (default `E:\vscode_dev\rock-collection-photos`) and `API
 **Photos are public as soon as they're uploaded.** They're pushed to the public Pages repo straight away, before you publish. Upload only real photos. Don't run these scripts against the owner's database to try them out either: they create specimens and use up public numbers. Use a throwaway stack, as for the e2e tests in `CLAUDE.md`.
 
 For the record: on Day 11 the upload of all 363 stones (727 photos) took 36 minutes, about 5 seconds a stone, and never hit GitHub's rate limit.
+
+## Message box (`message-box/Code.gs`)
+
+Not run here: it's a Google Apps Script that lives in the owner's Google Sheet. It's the back end of the message box on the public site's specimen pages. A visitor types up to 300 characters and clicks Send, and the script adds a row to the sheet's **Messages** tab: when, the specimen number, the stone's name and the message. Nothing is published, and nobody needs an account.
+
+The script checks everything again, because anyone can send it anything:
+- It cuts messages to 300 characters.
+- It replaces every link with `[link removed]`, unless the link goes to mindat.org. Email addresses are kept, so people can ask for a reply.
+- It stops text from running as a spreadsheet formula.
+- It quietly drops anything that filled in a hidden trap field, which only bots do.
+
+### Set-up (about 10 minutes, once)
+
+1. **Create the sheet and paste the script.**
+   1. In Google Drive, create a new Google Sheet, e.g. "Rock collection messages".
+   2. Choose **Extensions → Apps Script**.
+   3. Replace the editor's contents with all of `message-box/Code.gs`, then save (Ctrl+S).
+2. **Deploy it as a web app.**
+   1. Choose **Deploy → New deployment**, and click the cog next to "Select type" → **Web app**.
+   2. Set **Execute as:** *Me*, and **Who has access:** *Anyone*. *Anyone* means visitors can send messages. Only you can read the sheet.
+   3. Click **Deploy**, then **Authorize access** and pick your account.
+   4. Google warns that it "hasn't verified this app", because it's your own script. Choose **Advanced → Go to … (unsafe)**, then **Allow**. The script can only use this spreadsheet.
+3. **Check it and connect it to the site.**
+   1. Copy the **Web app URL** (it ends in `/exec`). Opening it in a browser should say "The message box is working."
+   2. In the app, open **Publish**, paste the address into **Message box address**, and click outside the field. It saves itself.
+   3. Click **Publish**. Every specimen page then gets the box.
+
+To remove the box, empty the address and publish again.
+
+**Updating the script later:** paste the new code, then choose **Deploy → Manage deployments → ✏️ → Version: New version → Deploy**. That keeps the same address. A *new* deployment would get a new address, which would have to go into the Publish dialog.
+
+**If spam ever gets through:** delete the rows. If it keeps coming, empty the address and publish to switch the box off, then ask for a CAPTCHA to be added.

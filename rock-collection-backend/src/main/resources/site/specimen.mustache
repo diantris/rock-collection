@@ -98,7 +98,28 @@
   </section>
   {{/hasNotes}}
 
+  {{#messageUrl}}
+  <section class="callout message-box" aria-labelledby="message-title">
+    <h2 id="message-title">Know what this is, or have an idea?</h2>
+    <form action="{{.}}" method="post" data-message hidden>
+      <input type="hidden" name="specimen" value="{{id}}">
+      <input type="hidden" name="stone" value="{{name}}">
+      <div class="message-trap" aria-hidden="true"><label>Leave this empty <input name="website" tabindex="-1" autocomplete="off"></label></div>
+      <textarea name="message" rows="4" maxlength="300" required aria-label="Your message" aria-describedby="message-note"
+        placeholder="Your thoughts on #{{id}}. Add your email if you’d like a reply."></textarea>
+      <div class="message-actions">
+        <p class="message-note" id="message-note">Only I read these, nothing is published. Links are removed, except to mindat.org.</p>
+        <span class="message-count" data-message-count aria-hidden="true"></span>
+        <button type="submit" class="button-filled">Send</button>
+      </div>
+    </form>
+    <p class="message-status" role="status" tabindex="-1" data-message-status></p>
+    <noscript><p>Please mention <strong>specimen #{{id}}</strong> when you reply.</p></noscript>
+  </section>
+  {{/messageUrl}}
+  {{^messageUrl}}
   <aside class="callout">Know what this is, or have an idea? Please mention <strong>specimen #{{id}}</strong> when you reply.</aside>
+  {{/messageUrl}}
   </div>
   </div>
 

@@ -27,10 +27,24 @@ class PublishControllerTest {
     @Test
     void updateSettings_acceptsFieldNames() throws Exception {
         mvc.perform(put("/api/publish/settings").header("X-Rock-Collection", "1").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"fields\": [\"HARDNESS\", \"STREAK\"], \"intro\": \"Hi\"}"))
+                        .content("{\"fields\": [\"HARDNESS\", \"STREAK\"], \"intro\": \"Hi\", \"messageUrl\": \"https://script.google.com/macros/s/abc/exec\"}"))
                 .andExpect(status().isOk());
 
-        verify(publishService).updateSettings(new PublishDto.SettingsRequest(EnumSet.of(PublishField.HARDNESS, PublishField.STREAK), "Hi"));
+        verify(publishService).updateSettings(new PublishDto.SettingsRequest(EnumSet.of(PublishField.HARDNESS, PublishField.STREAK), "Hi",
+                "https://script.google.com/macros/s/abc/exec"));
+    }
+
+    @Test
+    void updateSettings_messageBoxAddressMustBeHttpsOrEmpty() throws Exception {
+        for (String url : new String[] {"http://example.com/exec", "javascript:alert(1)", "https://a b"}) {
+            mvc.perform(put("/api/publish/settings").header("X-Rock-Collection", "1").contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"fields\": [], \"messageUrl\": \"" + url + "\"}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.messageUrl").value("messageUrl must be an https:// address"));
+        }
+        mvc.perform(put("/api/publish/settings").header("X-Rock-Collection", "1").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fields\": [], \"messageUrl\": \"\"}"))
+                .andExpect(status().isOk());
     }
 
     @Test

@@ -198,6 +198,33 @@ class SiteGeneratorTest {
     }
 
     @Test
+    void messageBox_isOnlyOnSpecimenPagesWhenItsAddressIsSet_andSendsTheNumberAndName() {
+        String url = "https://script.google.com/macros/s/abc/exec";
+        Map<String, String> site = new TreeMap<>();
+        generator.generate(new SiteGenerator.Content(null, url, DEFAULTS, List.of(specimen(4, "Frog & Co")), Map.of()))
+                .forEach((path, bytes) -> site.put(path, new String(bytes, StandardCharsets.UTF_8)));
+
+        String page = site.get("specimens/4/index.html");
+        assertThat(page).contains("<form action=\"" + url + "\" method=\"post\" data-message hidden>",
+                "name=\"specimen\" value=\"4\"", "name=\"stone\" value=\"Frog &amp; Co\"", "maxlength=\"300\"",
+                "aria-label=\"Your message\"", "name=\"website\"", ">Send</button>", "role=\"status\"")
+                .doesNotContain("<aside class=\"callout\">");
+        assertThat(site.get("index.html")).doesNotContain("data-message");
+
+        String without = generate(DEFAULTS, List.of(specimen(4, "Frog")), Map.of()).get("specimens/4/index.html");
+        assertThat(without).doesNotContain("data-message").contains("<aside class=\"callout\">", "specimen #4</strong>");
+    }
+
+    @Test
+    void messageBox_onlyForAWebAddress() {
+        Map<String, byte[]> site = generator.generate(
+                new SiteGenerator.Content(null, "javascript:alert(1)", DEFAULTS, List.of(specimen(4, "Frog")), Map.of()));
+
+        assertThat(new String(site.get("specimens/4/index.html"), StandardCharsets.UTF_8))
+                .doesNotContain("javascript:", "data-message");
+    }
+
+    @Test
     void specimenPage_galleryHasDotsOnlyForSeveralPhotos_andLinksToNeighbours() {
         Map<String, String> site = generate(DEFAULTS, List.of(specimen(3, "Three"), specimen(5, "Five"), specimen(9, "Nine")),
                 Map.of(5L, List.of(photo(5, "a", 0), photo(5, "b", 1)), 9L, List.of(photo(9, "only", 0))));

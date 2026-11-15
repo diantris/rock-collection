@@ -44,8 +44,17 @@ public class SiteGenerator {
         specimenTemplate = compiler.compile(text("site/specimen.mustache"));
     }
 
-    /** What to publish; {@code photos} maps a specimen id to its photos, cover first. */
-    public record Content(String intro, Set<PublishField> fields, List<Specimen> specimens, Map<Long, List<SpecimenPhoto>> photos) {}
+    /**
+     * What to publish; {@code photos} maps a specimen id to its photos, cover first.
+     * @param messageUrl where the specimen pages' message box sends messages, or null for no box
+     */
+    public record Content(String intro, String messageUrl, Set<PublishField> fields, List<Specimen> specimens,
+                          Map<Long, List<SpecimenPhoto>> photos) {
+        /** Without a message box. */
+        public Content(String intro, Set<PublishField> fields, List<Specimen> specimens, Map<Long, List<SpecimenPhoto>> photos) {
+            this(intro, null, fields, specimens, photos);
+        }
+    }
 
     /** @return repo path → file content, for every generated file */
     public Map<String, byte[]> generate(Content content) {
@@ -58,7 +67,7 @@ public class SiteGenerator {
         files.put("index.html", render(indexTemplate, index(content)));
         for (int i = 0; i < specimens.size(); i++) {
             Specimen s = specimens.get(i);
-            SpecimenPage page = specimenPage(s, fields, content.photos().getOrDefault(s.getId(), List.of()),
+            SpecimenPage page = specimenPage(s, fields, content.messageUrl(), content.photos().getOrDefault(s.getId(), List.of()),
                     i > 0 ? specimens.get(i - 1) : null, i < specimens.size() - 1 ? specimens.get(i + 1) : null);
             files.put(specimenPath(s.getId()) + "index.html", render(specimenTemplate, page));
         }
@@ -119,7 +128,7 @@ public class SiteGenerator {
                         List<String> whySpecial, boolean hasWhySpecial,
                         List<String> tags, boolean hasTags, List<PagePhoto> photos, boolean hasPhotos, boolean manyPhotos,
                         Identity identity, List<Section> sections, List<String> description, Link link, boolean hasNotes,
-                        Neighbour prev, Neighbour next) {}
+                        String messageUrl, Neighbour prev, Neighbour next) {}
 
     record PagePhoto(String src, Integer width, Integer height, String alt, String caption, int number, boolean first) {}
 
@@ -136,7 +145,7 @@ public class SiteGenerator {
 
     record Neighbour(Long id, String name, String href) {}
 
-    private SpecimenPage specimenPage(Specimen s, Set<PublishField> fields, List<SpecimenPhoto> photos, Specimen prev, Specimen next) {
+    private SpecimenPage specimenPage(Specimen s, Set<PublishField> fields, String messageUrl, List<SpecimenPhoto> photos, Specimen prev, Specimen next) {
         String root = "../../";
         Predicate<PublishField> on = fields::contains;
 
@@ -197,7 +206,7 @@ public class SiteGenerator {
                 s.getId(), s.getName(), marketName, whySpecial, !whySpecial.isEmpty(), tags, !tags.isEmpty(),
                 pagePhotos, !pagePhotos.isEmpty(), pagePhotos.size() > 1,
                 identity, sections, description, link, !description.isEmpty() || link != null,
-                neighbour(prev), neighbour(next));
+                webLink(messageUrl), neighbour(prev), neighbour(next));
     }
 
     private static IdentityComponent component(SpecimenComponent c) {

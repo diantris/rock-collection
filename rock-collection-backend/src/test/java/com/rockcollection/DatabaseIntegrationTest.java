@@ -159,10 +159,12 @@ class DatabaseIntegrationTest {
         assertThat(defaults.fields()).filteredOn(PublishDto.Field::included).extracting(PublishDto.Field::key)
                 .contains(PublishField.HARDNESS).doesNotContain(PublishField.PRICE);
 
-        publishService.updateSettings(new PublishDto.SettingsRequest(java.util.EnumSet.of(PublishField.STREAK), "Hello"));
+        publishService.updateSettings(new PublishDto.SettingsRequest(java.util.EnumSet.of(PublishField.STREAK), "Hello",
+                "https://script.google.com/macros/s/abc/exec"));
         assertThat(publishService.settings().fields()).filteredOn(PublishDto.Field::included)
                 .extracting(PublishDto.Field::key).containsExactly(PublishField.STREAK);
         assertThat(publishService.settings().intro()).isEqualTo("Hello");
+        assertThat(publishService.settings().messageUrl()).isEqualTo("https://script.google.com/macros/s/abc/exec");
 
         Long hidden = specimenService.create(JsonMapper.builder().build()
                 .readValue("{\"name\": \"Hidden\", \"published\": false}", SpecimenDto.Request.class)).id();

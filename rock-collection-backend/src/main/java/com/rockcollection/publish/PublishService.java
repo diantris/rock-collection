@@ -42,11 +42,12 @@ public class PublishService {
         return toDto(load());
     }
 
-    /** Saves which fields are published and the intro text; takes effect on the next publish. */
+    /** Saves which fields are published, the intro text and the message box address; takes effect on the next publish. */
     public PublishDto.Settings updateSettings(PublishDto.SettingsRequest request) {
         PublishSettings settings = load();
         settings.setFields(request.fields().stream().map(Enum::name).sorted().collect(Collectors.toCollection(ArrayList::new)));
-        settings.setIntro(request.intro() == null || request.intro().isBlank() ? null : request.intro().strip());
+        settings.setIntro(blankToNull(request.intro()));
+        settings.setMessageUrl(blankToNull(request.messageUrl()));
         return toDto(settingsRepository.save(settings));
     }
 
@@ -67,7 +68,7 @@ public class PublishService {
                 .findBySpecimenIdInOrderBySpecimenIdAscPositionAscIdAsc(specimens.stream().map(Specimen::getId).toList())
                 .stream().collect(Collectors.groupingBy(SpecimenPhoto::getSpecimenId, LinkedHashMap::new, Collectors.toList()));
 
-        Map<String, byte[]> site = siteGenerator.generate(new SiteGenerator.Content(settings.getIntro(), fields(settings), specimens, photos));
+        Map<String, byte[]> site = siteGenerator.generate(new SiteGenerator.Content(settings.getIntro(), settings.getMessageUrl(), fields(settings), specimens, photos));
         Optional<String> commit = gitHub.replaceAll(
                 "Publish %d specimen%s".formatted(specimens.size(), specimens.size() == 1 ? "" : "s"), site, SiteGenerator::isGenerated);
 
@@ -99,9 +100,13 @@ public class PublishService {
         Set<PublishField> included = fields(settings);
         List<PublishDto.Field> fields = Arrays.stream(PublishField.values())
                 .map(f -> new PublishDto.Field(f, f.label(), f.group().label(), included.contains(f))).toList();
-        return new PublishDto.Settings(fields, settings.getIntro(), settings.getLastPublishedAt(),
+        return new PublishDto.Settings(fields, settings.getIntro(), settings.getMessageUrl(), settings.getLastPublishedAt(),
                 gitHub.isConfigured() ? gitHub.pagesUrl() : null,
                 specimenRepository.countByPublishedTrueAndGoneFalse(), specimenRepository.countByGoneTrue(),
                 specimenRepository.count(), gitHub.isConfigured());
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.strip();
     }
 }

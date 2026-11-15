@@ -123,9 +123,11 @@ export function fetchPublishSettings(): Promise<PublishSettings> {
   return request('/api/publish/settings');
 }
 
-/** Saves the global publish checkboxes and the intro text of the public site. */
-export function updatePublishSettings(fields: PublishFieldKey[], intro: string): Promise<PublishSettings> {
-  return request('/api/publish/settings', { method: 'PUT', body: JSON.stringify({ fields, intro }) });
+/** Saves the global publish checkboxes, the intro text of the public site and the message box address. */
+export function updatePublishSettings(
+  settings: { fields: PublishFieldKey[]; intro: string; messageUrl: string },
+): Promise<PublishSettings> {
+  return request('/api/publish/settings', { method: 'PUT', body: JSON.stringify(settings) });
 }
 
 /** Marks every specimen to show on the public site. */
