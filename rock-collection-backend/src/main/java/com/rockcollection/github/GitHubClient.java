@@ -24,7 +24,7 @@ import java.util.function.Predicate;
 
 /**
  * Uses the Git Data API (tree, then commit, then ref update), so many added and deleted files make one commit.
- * Text files go inline in the tree request; only binary files need a request each (GitHub allows about 80
+ * Text files go inline in the tree requests (several for a big change); only binary files need a request each (GitHub allows about 80
  * content-creating requests a minute). Files whose content is already in the repo are left out.
  */
 @Component
@@ -42,6 +42,9 @@ public class GitHubClient {
     static final Duration MAX_RATE_LIMIT_WAIT = Duration.ofSeconds(90);
     /** GitHub's advice when a secondary rate limit says nothing about how long to wait. */
     private static final Duration DEFAULT_RATE_LIMIT_WAIT = Duration.ofSeconds(60);
+    /** Most a single tree request may carry; larger changes are built in several steps (see {@code createTree}). */
+    static final int MAX_TREE_BATCH_ENTRIES = 200;
+    static final long MAX_TREE_BATCH_BYTES = 256 * 1024;
 
     private final GitHubProperties properties;
     private final RestClient rest;
@@ -198,9 +201,7 @@ public class GitHubClient {
                 return Optional.empty();
             }
 
-            String tree = rest.post().uri(repoPath("/git/trees"))
-                    .body(Map.of("base_tree", baseTree, "tree", entries))
-                    .retrieve().body(ShaResponse.class).sha();
+            String tree = createTree(baseTree, entries);
             String commit = rest.post().uri(repoPath("/git/commits"))
                     .body(Map.of("message", message, "tree", tree, "parents", List.of(parent)))
                     .retrieve().body(ShaResponse.class).sha();
@@ -210,6 +211,41 @@ public class GitHubClient {
         } catch (RestClientException e) {
             throw new GitHubException("Couldn't save to GitHub (" + properties.repo() + "): " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Builds the new tree in steps, each on top of the last, because GitHub times out (a 422, "your input was too
+     * large") on one request with every page of the site inline. Trees left over from a failed step are never
+     * referenced, so they're harmless; the commit is still one commit.
+     * @return the sha of the final tree
+     */
+    private String createTree(String baseTree, List<Map<String, Object>> entries) {
+        String tree = baseTree;
+        List<Map<String, Object>> batch = new ArrayList<>();
+        long batchBytes = 0;
+        for (Map<String, Object> entry : entries) {
+            long size = entrySize(entry);
+            if (!batch.isEmpty() && (batch.size() >= MAX_TREE_BATCH_ENTRIES || batchBytes + size > MAX_TREE_BATCH_BYTES)) {
+                tree = postTree(tree, batch);
+                batch = new ArrayList<>();
+                batchBytes = 0;
+            }
+            batch.add(entry);
+            batchBytes += size;
+        }
+        return postTree(tree, batch);
+    }
+
+    private String postTree(String baseTree, List<Map<String, Object>> entries) {
+        return rest.post().uri(repoPath("/git/trees"))
+                .body(Map.of("base_tree", baseTree, "tree", entries))
+                .retrieve().body(ShaResponse.class).sha();
+    }
+
+    /** Rough size of a tree entry in the request: its path plus any inline content. */
+    private static long entrySize(Map<String, Object> entry) {
+        Object content = entry.get("content");
+        return ((String) entry.get("path")).length() + 100 + (content instanceof String s ? s.length() : 0);
     }
 
     /** Content of a file in the repo, read through the API so it's current right after a commit. */

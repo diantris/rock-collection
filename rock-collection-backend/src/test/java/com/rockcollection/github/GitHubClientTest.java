@@ -106,6 +106,27 @@ class GitHubClientTest {
     }
 
     @Test
+    void replaceAll_largeChange_buildsTheTreeInStepsButMakesOneCommit() {
+        // Three pages that don't fit in one tree request together (GitHub times out on one huge request)
+        String page = "x".repeat((int) (GitHubClient.MAX_TREE_BATCH_BYTES * 6 / 10));
+        Map<String, byte[]> files = new LinkedHashMap<>();
+        for (String name : List.of("a", "b", "c")) files.put("specimens/" + name + "/index.html", utf8(page));
+        expectCurrentFiles("[]");
+        String[][] steps = {{"base-tree", "step-1"}, {"step-1", "step-2"}, {"step-2", "tree"}};
+        for (int i = 0; i < steps.length; i++) {
+            server.expect(requestTo(REPO + "/git/trees")).andExpect(method(HttpMethod.POST))
+                    .andExpect(jsonPath("$.base_tree").value(steps[i][0]))
+                    .andExpect(jsonPath("$.tree.length()").value(1))
+                    .andExpect(jsonPath("$.tree[0].path").value("specimens/" + "abc".charAt(i) + "/index.html"))
+                    .andRespond(withSuccess("{\"sha\":\"" + steps[i][1] + "\"}", APPLICATION_JSON));
+        }
+        expectCommitAndRefUpdate("Publish");
+
+        assertThat(client.replaceAll("Publish", files, p -> true)).contains("new-commit");
+        server.verify();
+    }
+
+    @Test
     void replaceAll_nothingChanged_makesNoCommit() {
         String page = "<h1>Rocks</h1>";
         expectCurrentFiles("[{\"path\": \"index.html\", \"type\": \"blob\", \"sha\": \"" + GitHubClient.gitBlobSha(utf8(page)) + "\"}]");
