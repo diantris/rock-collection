@@ -15,7 +15,7 @@ import { deleteSpecimen, fetchPhotos, fetchSpecimens, setSpecimenPinned } from '
 import PhotoGallery from './PhotoGallery';
 import SpecimenFormDialog from './SpecimenFormDialog';
 import SpecimenDetailDialog from './SpecimenDetailDialog';
-import AddMaterialDialog from './AddMaterialDialog';
+import MaterialsDialog from './MaterialsDialog';
 import PublishDialog from './PublishDialog';
 import DeleteSpecimenDialog from './DeleteSpecimenDialog';
 import ColumnPicker from './ColumnPicker';
@@ -65,7 +65,7 @@ const SpecimensTable: React.FC = () => {
   const [formTarget, setFormTarget] = useState<number | 'new' | null>(null);
   const [detailId, setDetailId] = useState<number | null>(null);
   const [detailRefresh, setDetailRefresh] = useState(0);
-  const [addMaterialOpen, setAddMaterialOpen] = useState(false);
+  const [materialsOpen, setMaterialsOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [toDelete, setToDelete] = useState<{ id: number; name: string; published: boolean } | null>(null);
   // Gallery opened straight from a table photo
@@ -169,7 +169,7 @@ const SpecimensTable: React.FC = () => {
       </Typography>
       <Stack direction="row" sx={{ gap: 2, mb: 2, flexWrap: 'wrap' }}>
         <Button variant="contained" onClick={() => setFormTarget('new')}>Add a specimen</Button>
-        <Button variant="outlined" onClick={() => setAddMaterialOpen(true)}>Add a material</Button>
+        <Button variant="outlined" onClick={() => setMaterialsOpen(true)}>Materials</Button>
         <TextField
           type="search" size="small" placeholder="Name or number" value={searchText}
           onChange={e => setSearchText(e.target.value)}
@@ -309,7 +309,7 @@ const SpecimensTable: React.FC = () => {
       <PhotoGallery photos={gallery?.photos ?? []} startIndex={gallery ? 0 : null} title={gallery?.name ?? ''}
         onClose={() => setGallery(null)} />
       <PublishDialog open={publishOpen} onClose={() => setPublishOpen(false)} onSpecimensChanged={load} />
-      <AddMaterialDialog open={addMaterialOpen} onClose={() => setAddMaterialOpen(false)} onCreated={() => setAddMaterialOpen(false)} />
+      <MaterialsDialog open={materialsOpen} onClose={() => setMaterialsOpen(false)} onChanged={load} />
       <DeleteSpecimenDialog
         specimen={toDelete}
         onClose={() => setToDelete(null)}

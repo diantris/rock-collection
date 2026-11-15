@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -23,15 +25,19 @@ public class MaterialService {
         this.componentRepository = componentRepository;
     }
 
-    /** All materials, alphabetically. */
+    /** All materials, alphabetically, each with how many specimens use it. */
     @Transactional(readOnly = true)
     public List<MaterialDto.Response> findAll() {
-        return materialRepository.findAll(Sort.by("name")).stream().map(MaterialDto.Response::from).toList();
+        Map<Long, Long> usage = componentRepository.countSpecimensPerMaterial().stream()
+                .collect(Collectors.toMap(SpecimenComponentRepository.MaterialUsage::getMaterialId,
+                        SpecimenComponentRepository.MaterialUsage::getSpecimens));
+        return materialRepository.findAll(Sort.by("name")).stream()
+                .map(m -> MaterialDto.Response.from(m, usage.getOrDefault(m.getId(), 0L))).toList();
     }
 
     @Transactional(readOnly = true)
     public MaterialDto.Response findById(Long id) {
-        return MaterialDto.Response.from(get(id));
+        return MaterialDto.Response.from(get(id), componentRepository.countSpecimensUsing(id));
     }
 
     /** Creates a material; names must be unique ignoring case. */
@@ -39,22 +45,23 @@ public class MaterialService {
         ensureNameFree(request.name(), null);
         Material material = new Material();
         apply(material, request);
-        return MaterialDto.Response.from(materialRepository.save(material));
+        return MaterialDto.Response.from(materialRepository.save(material), 0);
     }
 
     public MaterialDto.Response update(Long id, MaterialDto.Request request) {
         Material material = get(id);
         ensureNameFree(request.name(), id);
         apply(material, request);
-        return MaterialDto.Response.from(material);
+        return MaterialDto.Response.from(material, componentRepository.countSpecimensUsing(id));
     }
 
     /** Deletes a material, refusing while any specimen still uses it. */
     public void delete(Long id) {
         Material material = get(id);
-        long usages = componentRepository.countByMaterialId(id);
+        long usages = componentRepository.countSpecimensUsing(id);
         if (usages > 0) {
-            throw new ConflictException("Material '" + material.getName() + "' is used by " + usages + " specimen component(s)");
+            throw new ConflictException("“%s” is still used by %d specimen%s. Remove it from %s first."
+                    .formatted(material.getName(), usages, usages == 1 ? "" : "s", usages == 1 ? "it" : "them"));
         }
         materialRepository.delete(material);
     }

@@ -365,3 +365,65 @@ test('The identification status is set by hand, shown in the details and the tab
     await request.delete(`${API}/specimens/${other.id}`);
   }
 });
+
+test('Materials can be listed, searched, added, edited (formulas get subscripts) and deleted once unused', async ({ page, request }) => {
+  const stamp = Date.now();
+  const name = `Editite ${stamp}`;
+  let specimen: { id: number } | null = null;
+  try {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Materials', exact: true }).click();
+    const list = page.getByRole('dialog', { name: 'Materials' });
+    await list.getByRole('searchbox', { name: 'Search materials' }).fill(name);
+    await expect(list.getByText(`No material matches “${name}”.`)).toBeVisible();
+
+    // Adding starts from what was searched for
+    await list.getByRole('button', { name: 'Add a material' }).click();
+    const add = page.getByRole('dialog', { name: 'Add a material' });
+    await expect(add.getByRole('textbox', { name: 'Scientific name' })).toHaveValue(name);
+    await add.getByRole('textbox', { name: 'Chemical formula' }).fill('CaSO4·2H2O');
+    await add.getByRole('textbox', { name: 'Chemical formula' }).blur();
+    await expect(add.getByRole('textbox', { name: 'Chemical formula' })).toHaveValue('CaSO₄·2H₂O');
+    await add.getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(add).toBeHidden();
+    const row = list.getByRole('button', { name: new RegExp(`^${name}`) });
+    await expect(row).toContainText('CaSO₄·2H₂O');
+    await expect(row).toContainText('unused');
+
+    // A specimen uses it: the list counts it, the details show the formula, and it can't be deleted
+    const material = (await (await request.get(`${API}/materials`)).json()).find((m: { name: string }) => m.name === name);
+    specimen = await createSpecimen(request, { name: `Uses ${name}`, components: [{ materialId: material.id }] });
+    await list.getByRole('button', { name: 'Close' }).click();
+    await expect(list).toBeHidden();
+    await page.getByRole('button', { name: 'Materials', exact: true }).click();
+    await list.getByRole('searchbox', { name: 'Search materials' }).fill('caso₄');
+    await expect(row).toContainText('1 specimen');
+    await row.click();
+    const edit = page.getByRole('dialog', { name: `Edit ${name}` });
+    await expect(edit.getByText('Used by 1 specimen; changes show on all of them.')).toBeVisible();
+    await expect(edit.getByRole('button', { name: 'Delete material' })).toHaveCount(0);
+    await edit.getByRole('textbox', { name: 'Scientific name' }).fill(`${name} renamed`);
+    await edit.getByRole('button', { name: 'Save' }).click();
+    await expect(edit).toBeHidden();
+    expect((await (await request.get(`${API}/specimens/${specimen.id}`)).json()).components[0])
+      .toMatchObject({ materialName: `${name} renamed`, formula: 'CaSO₄·2H₂O' });
+
+    // Unused again: it can be deleted, after confirming
+    await request.delete(`${API}/specimens/${specimen.id}`);
+    specimen = null;
+    await list.getByRole('button', { name: 'Close' }).click();
+    await expect(list).toBeHidden();
+    await page.getByRole('button', { name: 'Materials', exact: true }).click();
+    await list.getByRole('searchbox', { name: 'Search materials' }).fill(`${name} renamed`);
+    await list.getByRole('button', { name: new RegExp(`^${name} renamed`) }).click();
+    const again = page.getByRole('dialog', { name: `Edit ${name} renamed` });
+    await again.getByRole('button', { name: 'Delete material' }).click();
+    await again.getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(again).toBeHidden();
+    await expect(list.getByText(`No material matches “${name} renamed”.`)).toBeVisible();
+  } finally {
+    if (specimen) await request.delete(`${API}/specimens/${specimen.id}`);
+    const left = (await (await request.get(`${API}/materials`)).json()).filter((m: { name: string }) => m.name.startsWith(name));
+    for (const m of left) await request.delete(`${API}/materials/${m.id}`);
+  }
+});

@@ -19,11 +19,11 @@ public final class SpecimenDto {
     /** One material within a specimen, with the material's classification, as returned by the API. */
     public record Component(
             Long materialId, String materialName, MaterialCategory category, MaterialFamily family,
-            String mineralGroup, CrystalSystem crystalSystem, ComponentRole role, IdentificationCertainty certainty) {
+            String mineralGroup, CrystalSystem crystalSystem, String formula, ComponentRole role, IdentificationCertainty certainty) {
         static Component from(SpecimenComponent c) {
             Material m = c.getMaterial();
             return new Component(m.getId(), m.getName(), m.getCategory(), m.getFamily(),
-                    m.getMineralGroup(), m.getCrystalSystem(), c.getRole(), c.getCertainty());
+                    m.getMineralGroup(), m.getCrystalSystem(), m.getFormula(), c.getRole(), c.getCertainty());
         }
     }
 

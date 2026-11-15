@@ -138,7 +138,7 @@ const SpecimenDetailDialog: React.FC<Props> = ({ specimenId, refreshKey = 0, onC
                       </Stack>
                       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                         {[MATERIAL_CATEGORY_LABELS[c.category], c.family && FAMILY_LABELS[c.family],
-                          c.mineralGroup && `${c.mineralGroup} group`, c.crystalSystem && CRYSTAL_SYSTEM_LABELS[c.crystalSystem]]
+                          c.mineralGroup && `${c.mineralGroup} group`, c.crystalSystem && CRYSTAL_SYSTEM_LABELS[c.crystalSystem], c.formula]
                           .filter(Boolean).join(' · ')}
                       </Typography>
                     </Box>

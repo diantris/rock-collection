@@ -129,6 +129,26 @@ class DatabaseIntegrationTest {
     }
 
     @Test
+    void materialsSayHowManySpecimensUseThem_andOnlyUnusedOnesCanBeDeleted() {
+        JsonMapper json = JsonMapper.builder().build();
+        Long material = materialService.create(json.readValue(
+                "{\"name\": \"Countite\", \"category\": \"MINERAL\"}", com.rockcollection.material.MaterialDto.Request.class)).id();
+        // Listed twice in one specimen (host and inclusion), it still counts as one specimen
+        Long specimen = specimenService.create(json.readValue("{\"name\": \"Counted\", \"components\": [{\"materialId\": " + material
+                + ", \"role\": \"HOST\"}, {\"materialId\": " + material + ", \"role\": \"INCLUSION\"}]}", SpecimenDto.Request.class)).id();
+
+        assertThat(materialService.findAll()).filteredOn(m -> m.id().equals(material))
+                .extracting(MaterialDto.Response::specimenCount).containsExactly(1L);
+        assertThat(materialService.findById(material).specimenCount()).isEqualTo(1);
+        assertThatThrownBy(() -> materialService.delete(material)).isInstanceOf(ConflictException.class)
+                .hasMessageContaining("used by 1 specimen.");
+
+        specimenService.delete(specimen);
+        assertThat(materialService.findById(material).specimenCount()).isZero();
+        materialService.delete(material);
+    }
+
+    @Test
     void identificationStatusSortsByCertainty() {
         JsonMapper json = JsonMapper.builder().build();
         for (String status : List.of("IDENTIFIED", "UNIDENTIFIED", "PARTIALLY_IDENTIFIED", "POSSIBLE_ID")) {

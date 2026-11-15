@@ -11,7 +11,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ApiError, createSpecimen, fetchAcquiredFrom, fetchMaterials, fetchSpecimen, fetchTags, updateSpecimen, uploadPhotos } from './api';
 import { PHOTO_TYPES } from './PhotosSection';
-import AddMaterialDialog from './AddMaterialDialog';
+import MaterialFormDialog from './MaterialFormDialog';
 import {
   ACQUISITION_LABELS, AcquisitionType, CERTAINTY_LABELS, ComponentRole, FORM_LABELS, IDENTIFICATION_STATUS_HINTS,
   IDENTIFICATION_STATUS_LABELS, IdentificationCertainty, IdentificationStatus, Material,
@@ -143,7 +143,7 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
         setForm(fromDetail(d));
         setComponents(d.components.map(c => ({
           material: { id: c.materialId, name: c.materialName, category: c.category, family: c.family, mineralGroup: c.mineralGroup,
-            crystalSystem: c.crystalSystem, formula: null, mindatUrl: null, description: null },
+            crystalSystem: c.crystalSystem, formula: c.formula, mindatUrl: null, description: null, specimenCount: 0 },
           role: c.role, certainty: c.certainty,
         })));
       })
@@ -461,11 +461,11 @@ const SpecimenFormDialog: React.FC<Props> = ({ open, specimenId, onClose, onSave
         </Button>
       </DialogActions>
 
-      <AddMaterialDialog
+      <MaterialFormDialog
         open={newMaterial !== null}
         initialName={newMaterial?.name}
         onClose={() => setNewMaterial(null)}
-        onCreated={m => {
+        onSaved={m => {
           setMaterials(prev => [...prev, m].sort((a, b) => a.name.localeCompare(b.name)));
           if (newMaterial) updateComponent(newMaterial.index, { material: m });
           setNewMaterial(null);

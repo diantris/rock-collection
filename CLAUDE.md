@@ -74,7 +74,6 @@ Keep data entry **low-friction**: sensible defaults, few required fields, no lon
 
 **Not built yet:**
 - photo captions in the UI (the column exists, nothing edits it)
-- editing or deleting materials in the UI (the API supports both)
 - GCP deployment
 
 **Agreed roadmap:**
@@ -191,7 +190,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
 | GET / PUT | `/api/publish/settings` | `{fields: [{key, label, group, included}], intro, messageUrl, lastPublishedAt, siteUrl, publicCount, goneCount, totalCount, gitHubConfigured}`. `publicCount` counts specimens that will actually be published (public and not gone). PUT takes `{fields: [keys], intro, messageUrl}` and replaces all three; an unknown key, or a `messageUrl` that isn't blank or `https://…`, is a 400. |
 | POST | `/api/publish/all-specimens` | Marks every specimen public (gone ones still aren't published); returns the settings |
 | POST | `/api/publish` | Regenerates and commits the site: `{changed, specimenCount, siteUrl, publishedAt}`. `changed` is false when the site was already up to date. 503 without GitHub. |
-| GET/POST/PUT/DELETE | `/api/materials[/{id}]` | Returns 409 on a duplicate name, or when deleting a material that's still in use |
+| GET/POST/PUT/DELETE | `/api/materials[/{id}]` | Each material carries `specimenCount` (specimens using it; one listing it twice counts once). Returns 409 on a duplicate name, or when deleting a material that's still in use. `mindatUrl` must be blank or `http(s)://…`. |
 
 ### Frontend (`rock-collection-frontend/src`)
 
@@ -211,7 +210,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
   - Numbers accept decimal commas ("2,65").
   - Luster, transparency, streak, cleavage, fracture and habit offer suggestions from `suggestions.ts`, but free text is still allowed. Hardness has a scratch-test hint.
   - "Where I got it" lists the places already used (`/acquired-from`), latest first, as soon as it's clicked. It's an Autocomplete, so its role is `combobox`, not `textbox`.
-  - Typing a material that isn't on the list offers "Add … as a new material", which opens `AddMaterialDialog` pre-filled.
+  - Typing a material that isn't on the list offers "Add … as a new material", which opens `MaterialFormDialog` pre-filled.
   - **"Add & next"** saves the specimen and resets the form for the next one. It keeps the source, where-I-got-it, date, currency and tags, for batch entry.
   - PUT replaces every field, so the form always sends the full request.
   - Below the sections: "Show on the public site" and "No longer in my collection". While the second is on, the first shows as off and is disabled (its value is kept).
@@ -223,7 +222,8 @@ Unknown specimens are the main use case. The owner records measurements and obse
   - The add form has "Choose photos"; they're uploaded right after the specimen is saved, including with "Add & next". If the upload fails, the specimen stays saved and a warning says to add the photos from its details.
 - **Deletions reach the public site only on the next publish** (until then its pages show broken photos), so deleting a photo (`PhotosSection`) or a public specimen (`SpecimensTable`) shows a "publish again" note.
 - **`PublishDialog`** (the "Publish" button): the public/total specimen count with "Show all specimens", the field checkboxes grouped by section (each tick is saved straight away), the front-page intro and the "Message box address" (both saved on blur; an address that isn't `https://` shows "Not saved: …" under the field), the last publish time with the site link, and "Publish". Without a token it explains `GITHUB_TOKEN` and disables Publish.
-- `specimens/` also holds `AddMaterialDialog` and `DeleteSpecimenDialog`.
+- **Materials** (the toolbar's "Materials" button, Day 13): `MaterialsDialog` lists every material with its classification, formula and how many specimens use it, searchable by name, formula or group, with "Add a material" (pre-filled with the search text). Clicking one opens `MaterialFormDialog` (add and edit in one), which can delete it only while no specimen uses it, after a confirm. An edit shows on every specimen with that material, so the table reloads. The formula field turns typed numbers into subscripts and charges into superscripts when you leave it (`formatFormula`: "CaSO4·2H2O" → "CaSO₄·2H₂O", "Fe2+" → "Fe²⁺"; amounts at the start or after "·" stay). The specimen details show each component's formula.
+- `specimens/` also holds `DeleteSpecimenDialog`.
 - **Theme (`theme.ts`): Material You / M3.**
   - **Colours:** generated from `SEED_COLOR` by `@material/material-color-utilities` (`SchemeTonalSpot`). Change that one value to re-colour the whole app.
   - **Light and dark mode** follow the OS, using MUI CSS variables with `colorSchemes`.
@@ -238,8 +238,8 @@ Unknown specimens are the main use case. The owner records measurements and obse
   - the searchbox "Search specimens" and the button "Clear search"
   - the table's "Pin {name}" buttons and "Resize {label} column" separators
   - the table "Specimens"
-  - the buttons "Add a specimen", "Add & next", "Delete {name}" and "Publish"; the dialog "Publish the public site" with the regions "Specimens on the site" and "Fields to publish" (a group per section), "Show all specimens", the intro textbox and the "Message box address" textbox
-  - the dialogs "Add a specimen", "Edit #{id}", "#{id} {name}" and "Add a material"
+  - the buttons "Add a specimen", "Materials", "Add & next", "Delete {name}" and "Publish"; the dialog "Publish the public site" with the regions "Specimens on the site" and "Fields to publish" (a group per section), "Show all specimens", the intro textbox and the "Message box address" textbox
+  - the dialogs "Add a specimen", "Edit #{id}", "#{id} {name}", "Materials" (searchbox "Search materials", one button per material starting with its name), "Add a material" and "Edit {material name}" (buttons "Delete material", then "Delete")
   - the detail sections, which are regions named after their titles (including "Photos")
   - the form switches labelled "Show on the public site" and "No longer in my collection", and the table's "Gone" chip
   - the form's "Identification status" combobox and the table's "Identification" column header button

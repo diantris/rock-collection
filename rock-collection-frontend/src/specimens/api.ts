@@ -88,6 +88,16 @@ export function createMaterial(body: MaterialRequest): Promise<Material> {
   return request('/api/materials', { method: 'POST', body: JSON.stringify(body) });
 }
 
+/** Replaces every field of a material; the specimens using it show the change at once. */
+export function updateMaterial(id: number, body: MaterialRequest): Promise<Material> {
+  return request(`/api/materials/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+}
+
+/** Refused (409) while any specimen still uses the material. */
+export function deleteMaterial(id: number): Promise<void> {
+  return request(`/api/materials/${id}`, { method: 'DELETE' });
+}
+
 /** A specimen's photos, cover first. */
 export function fetchPhotos(specimenId: number): Promise<Photo[]> {
   return request(`/api/specimens/${specimenId}/photos`);

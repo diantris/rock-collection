@@ -111,6 +111,8 @@ export interface Material {
   formula: string | null;
   mindatUrl: string | null;
   description: string | null;
+  /** How many specimens use it; only unused materials can be deleted. */
+  specimenCount: number;
 }
 
 export interface Component {
@@ -120,6 +122,7 @@ export interface Component {
   family: MaterialFamily | null;
   mineralGroup: string | null;
   crystalSystem: CrystalSystem | null;
+  formula: string | null;
   role: ComponentRole;
   certainty: IdentificationCertainty;
 }
