@@ -144,19 +144,32 @@
     var sendButton = messageForm.querySelector('button[type="submit"]');
     var maxLength = messageText.getAttribute('maxlength');
     var countMessage = function () { messageCount.textContent = messageText.value.length + ' / ' + maxLength; };
+    // This browser's messages about this stone; from the fourth one on, nothing is sent (the script has its own limits)
+    var sentKey = 'rock-collection-sent-' + messageForm.elements.specimen.value;
+    var sentBefore = function () {
+      try { return Number(localStorage.getItem(sentKey)) || 0; } catch (err) { return 0; }
+    };
+    var finish = function (text) {
+      messageForm.hidden = true;
+      messageStatus.textContent = text;
+      messageStatus.focus();
+    };
 
     messageText.addEventListener('input', countMessage);
     messageForm.addEventListener('submit', function (e) {
       e.preventDefault();
       if (!messageText.value.trim()) { messageText.focus(); return; }
+      if (sentBefore() >= 3) {
+        finish('Thank you, I’m still reviewing your previous messages about this stone.');
+        return;
+      }
       sendButton.disabled = true;
       sendButton.textContent = 'Sending…';
       messageStatus.textContent = '';
       fetch(messageForm.action, { method: 'POST', mode: 'no-cors', body: new URLSearchParams(new FormData(messageForm)) })
         .then(function () {
-          messageForm.hidden = true;
-          messageStatus.textContent = 'Thank you! Your message has been sent.';
-          messageStatus.focus();
+          try { localStorage.setItem(sentKey, String(sentBefore() + 1)); } catch (err) { /* private mode: not counted */ }
+          finish('Thank you! Your message has been sent.');
         }, function () {
           sendButton.disabled = false;
           sendButton.textContent = 'Send';

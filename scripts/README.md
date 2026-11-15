@@ -24,6 +24,9 @@ The script checks everything again, because anyone can send it anything:
 - It replaces every link with `[link removed]`, unless the link goes to mindat.org. Email addresses are kept, so people can ask for a reply.
 - It stops text from running as a spreadsheet formula.
 - It quietly drops anything that filled in a hidden trap field, which only bots do.
+- **Spam limits.** Google doesn't tell the script who sent a message, so these go by what's already in the sheet. A message identical to one already saved for the same stone isn't saved again (ignoring case and spacing). At most **5 messages an hour per stone** and **100 an hour in all** are saved. The sender always sees the same thank-you, so bots learn nothing. The numbers are `PER_STONE_PER_HOUR` and `PER_HOUR` at the top of the script.
+
+The page adds one more limit: a browser that has sent 3 messages about a stone gets "Thank you, I'm still reviewing your previous messages about this stone." on the next try, and nothing is sent. The count is kept per stone in that browser (`localStorage`), so it doesn't stop anyone writing about other stones.
 
 ### Set-up (about 10 minutes, once)
 

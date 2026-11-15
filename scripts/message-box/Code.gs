@@ -4,9 +4,18 @@
 // The page posts specimen (the number), stone (its name), message and website (a hidden trap field only bots fill in).
 // Every value from the page is untrusted, so it's checked again here: the length limit, links (removed unless they
 // go to mindat.org), and text a spreadsheet would run as a formula.
+//
+// Against spam (Google doesn't tell the script who sent a message, so the limits go by what's already in the sheet):
+// a message identical to one already saved for the same stone isn't saved again, and at most PER_STONE_PER_HOUR
+// messages an hour are saved per stone and PER_HOUR in all. Dropped messages still get "ok". (The page itself also
+// stops a visitor after their third message about a stone.)
 
 /** Same limit as the page's box. */
 const MAX_LENGTH = 300;
+const PER_STONE_PER_HOUR = 5;
+const PER_HOUR = 100;
+/** How many of the latest rows are checked for repeats and counted for the limits. */
+const RECENT_ROWS = 500;
 /** The tab the messages go into; it's created, with a header row, by the first message. */
 const SHEET_NAME = 'Messages';
 const LINK_REMOVED = '[link removed]';
@@ -29,13 +38,50 @@ function doPost(e) {
       const lock = LockService.getScriptLock();
       lock.waitLock(10000); // two messages at the same moment must not overwrite each other's row
       try {
-        messagesSheet().appendRow([new Date(), specimenNumber(p.specimen), asText(plain(p.stone).slice(0, 200)), asText(message)]);
+        const sheet = messagesSheet();
+        const now = new Date();
+        const specimen = specimenNumber(p.specimen);
+        if (shouldSave(sheet.getLastRow() < 2 ? [] : latestRows(sheet), specimen, message, now)) {
+          sheet.appendRow([now, specimen, asText(plain(p.stone).slice(0, 200)), asText(message)]);
+        }
       } finally {
         lock.releaseLock();
       }
     }
   }
   return ContentService.createTextOutput('ok');
+}
+
+/** The latest RECENT_ROWS messages as [received, specimen, stone, message], oldest first. */
+function latestRows(sheet) {
+  const last = sheet.getLastRow();
+  const first = Math.max(2, last - RECENT_ROWS + 1); // row 1 is the header
+  return sheet.getRange(first, 1, last - first + 1, 4).getValues();
+}
+
+/**
+ * False for a repeat of a message already saved for this stone, or when this stone (or the whole site) already got
+ * its limit of messages in the last hour.
+ */
+function shouldSave(rows, specimen, message, now) {
+  const text = sameText(message);
+  const hourAgo = now.getTime() - 60 * 60 * 1000;
+  let lastHour = 0;
+  let stoneLastHour = 0;
+  for (const [received, number, , saved] of rows) {
+    const sameStone = String(number) === String(specimen);
+    if (sameStone && sameText(saved) === text) return false;
+    if (received instanceof Date && received.getTime() > hourAgo) {
+      lastHour++;
+      if (sameStone) stoneLastHour++;
+    }
+  }
+  return lastHour < PER_HOUR && stoneLastHour < PER_STONE_PER_HOUR;
+}
+
+/** Messages count as the same whatever their case and spacing. */
+function sameText(value) {
+  return String(value).toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
 /** Opening the web app's address in a browser shows this, to check it's deployed. */
