@@ -7,7 +7,7 @@
 FROM caddy:2-builder AS caddy
 RUN xcaddy build --with github.com/caddy-dns/duckdns
 
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 RUN corepack enable
 COPY package.json yarn.lock ./
