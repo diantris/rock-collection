@@ -1,0 +1,76 @@
+# deploy/docker-compose.yml - The app on the cloud VM (deploy/README.md): the images CI publishes to GitHub's container
+# registry (the VM never builds anything), sized for the free e2-micro's 1 GB of RAM. Values come from .env next to
+# this file (made by setup-vm.sh from .env.example; never committed). update.sh (cron, every 5 minutes) keeps it running.
+name: rock-collection
+
+# Docker keeps every container's output (`docker compose logs`) in a file that otherwise only grows: at most 3 x 10 MB.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  db:
+    # The same image as locally (Debian-based, unlike -alpine), so names sort exactly as they do there.
+    # update.sh doesn't pull it; see "Updating Postgres" in the README.
+    image: postgres:18
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      POSTGRES_DB: rockdb
+      POSTGRES_USER: rockuser
+      # Only reachable inside Docker's network (no published port); setup-vm.sh generates it.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    # A small DB (a few hundred specimens): small buffers, few connections (the API's pool is 4).
+    command: postgres -c shared_buffers=32MB -c max_connections=20 -c work_mem=4MB
+    volumes:
+      # postgres 18+ keeps its data in a version-specific subdirectory of /var/lib/postgresql
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rockuser -d rockdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    image: ghcr.io/diantris/rock-collection-api:latest
+    restart: unless-stopped
+    logging: *logging
+    # Its memory settings are in the image (rock-collection-backend/Dockerfile), already sized for this VM.
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/rockdb
+      SPRING_DATASOURCE_USERNAME: rockuser
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # Publishing and photo uploads; without it everything else still works.
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_PAGES_REPO: ${GITHUB_PAGES_REPO:-diantris/rock-collection-page}
+      GITHUB_PAGES_BRANCH: ${GITHUB_PAGES_BRANCH:-main}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    # The app's files and Caddy: HTTPS for the DuckDNS name, /api/* passed on to the api service.
+    image: ghcr.io/diantris/rock-collection-frontend:latest
+    restart: unless-stopped
+    logging: *logging
+    command: ["caddy", "run", "--config", "/etc/caddy/vm.Caddyfile", "--adapter", "caddyfile"]
+    environment:
+      DUCKDNS_DOMAIN: ${DUCKDNS_DOMAIN:?set DUCKDNS_DOMAIN in .env}
+      DUCKDNS_TOKEN: ${DUCKDNS_TOKEN:?set DUCKDNS_TOKEN in .env}
+    ports:
+      # Who may connect is decided by the GCP firewall (only the home IP). Port 80 only redirects to HTTPS.
+      - "80:80"
+      - "443:443"
+    volumes:
+      # The certificate and Let's Encrypt account, kept across restarts (Let's Encrypt limits how often it's asked).
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:
