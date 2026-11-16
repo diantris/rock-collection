@@ -1,0 +1,29 @@
+# dependabot.yml - Once a month GitHub opens one pull request per area with every available update (grouped, so it's a
+# handful of PRs, not dozens); security fixes come as their own PR as soon as they're known. CI tests each one.
+# Merging one is a deploy, like any merge to master (deploy/README.md).
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /rock-collection-backend
+    schedule: { interval: monthly }
+    groups:
+      backend: { patterns: ["*"] }
+
+  - package-ecosystem: npm
+    directory: /rock-collection-frontend
+    schedule: { interval: monthly }
+    groups:
+      frontend: { patterns: ["*"] }
+
+  # Base images of the two Dockerfiles
+  - package-ecosystem: docker
+    directories: [/rock-collection-backend, /rock-collection-frontend]
+    schedule: { interval: monthly }
+    groups:
+      images: { patterns: ["*"] }
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+    groups:
+      actions: { patterns: ["*"] }

@@ -3,7 +3,7 @@
 // The search box filters by part of the name or market name, or by number, on the server, so paging still works.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Box, Button, ButtonBase, CircularProgress, IconButton, InputAdornment, Paper, Stack, SxProps, Table, TableBody,
+  Alert, Box, Button, ButtonBase, CircularProgress, IconButton, InputAdornment, Link, Paper, Stack, SxProps, Table, TableBody,
   TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, TextField, Theme, Tooltip, Typography,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
@@ -20,7 +20,7 @@ import PublishDialog from './PublishDialog';
 import DeleteSpecimenDialog from './DeleteSpecimenDialog';
 import ColumnPicker from './ColumnPicker';
 import ColumnResizer from './ColumnResizer';
-import { COLUMNS, ColumnDef, loadColumnWidths, loadVisibleColumns, saveColumnWidths, saveVisibleColumns } from './columns';
+import { COLUMNS, ColumnDef, GoneChip, loadColumnWidths, loadVisibleColumns, saveColumnWidths, saveVisibleColumns } from './columns';
 import { Order, Page, Photo, SpecimenSortKey, SpecimenSummary } from './types';
 
 /** How long typing must pause before the table searches. */
@@ -135,8 +135,23 @@ const SpecimensTable: React.FC = () => {
   /** A stone no longer in the collection: faded text and a faded, grey photo (cells stay opaque for sticky columns). */
   const goneRowSx = { '& td': { color: 'text.disabled' }, '& img': { filter: 'grayscale(1)', opacity: 0.5 } };
 
-  /** Cell content; a table photo opens the gallery instead of the details. */
+  /**
+   * Cell content; a table photo opens the gallery instead of the details. The name is a button that opens the
+   * details: clicking anywhere on a row does that too, but a keyboard or a screen reader needs a real control.
+   */
   const cell = (col: ColumnDef, s: SpecimenSummary) => {
+    if (col.id === 'name') {
+      return (
+        <>
+          {s.gone && <GoneChip />}
+          <Link component="button" type="button" underline="hover" color="inherit"
+            onClick={e => { e.stopPropagation(); setDetailId(s.id); }}
+            sx={{ font: 'inherit', textAlign: 'left', verticalAlign: 'baseline', userSelect: 'text', overflowWrap: 'anywhere' }}>
+            {s.name}
+          </Link>
+        </>
+      );
+    }
     if (col.id !== 'photo' || s.thumbnailVersion === null) return col.render(s);
     return (
       <ButtonBase aria-label={`Photos of ${s.name}`} onClick={e => { e.stopPropagation(); openGallery(s); }} sx={{ borderRadius: 2 }}>

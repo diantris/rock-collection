@@ -142,3 +142,6 @@ replay_pid*
 
 # Local secrets (GitHub token etc.) - see .env.example
 .env
+
+# Database dumps (the real data)
+*.dump

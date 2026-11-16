@@ -58,6 +58,8 @@
     var expandButton = gallery.querySelector('[data-gallery-expand]');
     var closeButton = gallery.querySelector('[data-gallery-close]');
     var current = 0;
+    // Visitors who asked their device for less motion get photo changes without the sliding
+    var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     var mark = function (index) {
       Array.prototype.forEach.call(dotButtons, function (b, i) {
@@ -66,7 +68,7 @@
     };
     var show = function (index, instant) {
       current = (index + slides.length) % slides.length; // wraps around
-      track.scrollTo({ left: current * track.clientWidth, behavior: instant ? 'auto' : 'smooth' });
+      track.scrollTo({ left: current * track.clientWidth, behavior: instant || calm ? 'auto' : 'smooth' });
       mark(current);
     };
 
@@ -88,10 +90,18 @@
     }
 
     // Full screen: the same gallery, fixed over the page. It adds a history entry, so the browser's or phone's
-    // Back button closes it (instead of leaving the page), and so do the close button and Escape.
+    // Back button closes it (instead of leaving the page), and so do the close button and Escape. Meanwhile it's a
+    // dialog: screen readers leave the page behind it alone, and Tab stays within its buttons (see keydown below).
     var fullScreen = false;
     var setFullScreen = function (on) {
       fullScreen = on;
+      if (on) {
+        gallery.setAttribute('role', 'dialog');
+        gallery.setAttribute('aria-modal', 'true');
+      } else {
+        gallery.removeAttribute('role');
+        gallery.removeAttribute('aria-modal');
+      }
       gallery.classList.toggle('is-fullscreen', on);
       document.documentElement.classList.toggle('viewer-open', on);
       expandButton.hidden = on;
@@ -120,6 +130,15 @@
       if (e.key === 'ArrowLeft' && slides.length > 1) { e.preventDefault(); show(current - 1); }
       if (e.key === 'ArrowRight' && slides.length > 1) { e.preventDefault(); show(current + 1); }
       if (e.key === 'Escape' && fullScreen) { e.preventDefault(); close(); }
+      if (e.key === 'Tab' && fullScreen) {
+        // From the last button on to the first (and back), instead of into the page hidden behind
+        var stops = Array.prototype.filter.call(gallery.querySelectorAll('button'), function (b) {
+          return !b.hidden && !b.parentNode.hidden;
+        });
+        var first = stops[0], last = stops[stops.length - 1], at = document.activeElement;
+        if (e.shiftKey && (at === first || at === gallery)) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && at === last) { e.preventDefault(); first.focus(); }
+      }
     });
 
     gallery.classList.add('gallery-enhanced');

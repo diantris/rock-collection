@@ -57,7 +57,7 @@ Keep data entry **low-friction**: sensible defaults, few required fields, no lon
 
 ## Current state (as of Day 14)
 
-**The collection is seeded:** 363 specimens (#1–#363) were bulk-imported from the owner's photo folders on Day 11, with all 727 photos uploaded. Every component from that import is a TENTATIVE guess made from the folder name, and the owner is refining them in the app. Treat this local DB as the owner's real data (see Commands).
+**The collection is seeded:** 363 specimens (#1–#363) were bulk-imported from the owner's photo folders on Day 11, with all 727 photos uploaded. Every component from that import is a TENTATIVE guess made from the folder name, and the owner is refining them in the app. Stones added since continue the numbering (367 on Day 14). **The real data is on the GCP VM** (moved there on Day 14, see Deployment); the database on the owner's PC is a stale test copy without a GitHub token, so nothing can be published from it.
 
 **Already built:**
 - the specimen data model (roadmap step 1)
@@ -71,17 +71,18 @@ Keep data entry **low-friction**: sensible defaults, few required fields, no lon
 - "Why it's special" per specimen, under the name everywhere (Day 12)
 - pins (pinned stones top the table and the public site) and a default order by name; visitors can re-sort the site; the table's header row stays in view (Day 12)
 - a table search box (part of the name or market name, or the number) and recently used places for "Where I got it" (Day 12)
+- the GCP VM (roadmap step 5, Day 14): `deploy/`, CI that publishes the images, the plain-files frontend behind Caddy; live at the owner's DuckDNS name
 
 **Not built yet:**
 - photo captions in the UI (the column exists, nothing edits it)
-- the GCP VM itself: the repo side is ready (Day 14: `deploy/`, CI, the plain-files frontend), and the owner is setting up the account and VM by following `deploy/README.md`. Once the database has moved there, **the VM holds the real data** and the PC's app is only a test copy without a token
+- a second lock besides the home-IP firewall rule, alerts when a backup or the VM fails, image tags to roll back to (ideas from the Day 14 review; none agreed yet)
 
 **Agreed roadmap:**
 1. ~~New specimen data model~~ (done, Day 7)
 2. ~~Full add/edit forms and the Material You restyle~~ (done, Day 7)
 3. ~~Thumbnail upload and the photo pipeline~~ (done, Day 8)
 4. ~~Static site export with a gallery~~ (done, Day 8)
-5. GCP deployment (repo side done Day 14; the VM is being set up)
+5. ~~GCP deployment~~ (done, Day 14)
 
 ## Architecture
 
@@ -155,7 +156,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
   - **Order:** the site lists specimens (and links the pages' previous/next) in the app's default order: pinned first, then by name (`findByPublishedTrueAndGoneFalseOrderByPinnedDescNameAscIdAsc`). The generator keeps the order it's given.
   - The front page counts the stones per identification status ("340 unidentified · 15 possible ID · …", only statuses in use) and the specimen page's Scientific identity panel starts with the status chip and a short note (e.g. "This is what I’d love help with."), then the components. `site.js` adds search, a "Status" filter (All, or one status with its count), a "Sort by" choice ("Featured first" is the owner's order; name, number, newest first) and the gallery's arrows, dots and keys, and sends the message box (`fetch` with `mode: 'no-cors'`, since the Apps Script is on another site and its answer can't be read; arriving is enough), then shows a thank-you. Without JS every card shows, in the owner's order, and the gallery still swipes (CSS scroll-snap); the message box stays hidden, because a plain form post would leave the visitor on the script's bare "ok" page.
   - **Specimen page layout** (Day 13 redesign): on screens ≥ 900px two columns, the photos on the left (square frame, kept in view with `position: sticky`) and the header, panels and callout on the right; on phones one column (header, photos, details). Panels list label/value rows with hairlines between them; components show the name with the role and certainty chips on the right. Previous/next are two cards at the foot.
-- **Photos open full screen on the page**, never as a link to the bare image file (that left visitors on a raw JPEG with no way back). Clicking a photo or "View photos full screen" fixes the same gallery over the page (`.is-fullscreen`); "Close full screen", Escape and the browser's or phone's Back button close it (opening pushes a history entry). Works for single-photo specimens too.
+- **Photos open full screen on the page**, never as a link to the bare image file (that left visitors on a raw JPEG with no way back). Clicking a photo or "View photos full screen" fixes the same gallery over the page (`.is-fullscreen`); "Close full screen", Escape and the browser's or phone's Back button close it (opening pushes a history entry). Works for single-photo specimens too. While open the gallery is a `role="dialog"` and Tab cycles within its buttons. `prefers-reduced-motion` turns off the sliding and the transitions (`site.css` and `site.js`).
   - `PublishService` / `PublishController` (see API).
 - `github/` holds `GitHubClient` (Git Data API: ref, commit, recursive tree listing, then tree requests with **text files inline**, then commit and ref update; a big change (a first publish of hundreds of pages) is split into tree requests of at most 200 entries / 256 KB, each built on the last, because GitHub times out with a 422 on one huge request; only binary files need a blob request each, because GitHub allows only about 80 content-creating requests a minute; files whose git blob sha already matches are skipped; deletions of missing files are ignored; `replaceAll(message, files, managed)` makes the managed paths exactly `files`). Right after a commit GitHub can briefly report the old branch head, so a "not a fast forward" refusal is retried up to 4 times on the new head. **Rate limits** (GitHub allows about 80 content-creating requests a minute and **500 an hour**; a photo needs 2, a commit 2–3): a wait of up to 90 s (from `Retry-After`, `x-ratelimit-reset`, or 60 s for a secondary limit) is sat out and the commit continues, reusing blobs already uploaded; a longer one fails with a 503 saying how many minutes to wait. Bulk seeding is limited to roughly 200 photos an hour. `GitHubProperties` (`rockcollection.github.*`) and `GitHubException` (503). Without a token, photo uploads fail with a 503 that names `GITHUB_TOKEN`; everything else works.
 - `common/` holds `NotFoundException` (404), `ConflictException` (409) and `PageResponse<T>`.
@@ -236,7 +237,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
 - Playwright tests select elements by role and accessible name. Keep these names stable, or update `test/*.spec.ts` along with them:
   - the heading "Rock Collection"
   - the searchbox "Search specimens" and the button "Clear search"
-  - the table's "Pin {name}" buttons and "Resize {label} column" separators
+  - the table's "Pin {name}" buttons, each specimen's name (a button named exactly by the name, which opens the details: rows are clickable, but keyboards and screen readers need a real control) and "Resize {label} column" separators
   - the table "Specimens"
   - the buttons "Add a specimen", "Materials", "Add & next", "Delete {name}" and "Publish"; the dialog "Publish the public site" with the regions "Specimens on the site" and "Fields to publish" (a group per section), "Show all specimens", the intro textbox and the "Message box address" textbox
   - the dialogs "Add a specimen", "Edit #{id}", "#{id} {name}", "Materials" (searchbox "Search materials", one button per material starting with its name), "Add a material" and "Edit {material name}" (buttons "Delete material", then "Delete")
@@ -277,7 +278,7 @@ corepack yarn test:e2e test/api.spec.ts
 
 The Playwright tests use `FRONTEND_URL` (default `http://localhost:3000`) and `API_BASE_URL` (default `http://localhost:8080/api`).
 
-**Don't run the e2e tests against the owner's real database** (the default `docker compose` stack once seeding has started): they create and delete specimens, which uses up public specimen numbers. Use a throwaway stack instead, without a GitHub token (deleting a specimen removes `photos/{id}/` from the real Pages repo):
+**Don't run the e2e tests against a database with the owner's data** (the VM, or the PC's default `docker compose` stack, which holds a copy): they create and delete specimens, which uses up public specimen numbers. Use a throwaway stack instead, without a GitHub token (deleting a specimen removes `photos/{id}/` from the real Pages repo):
 
 ```sh
 docker run -d --rm --name rocktest-db -e POSTGRES_DB=rockdb -e POSTGRES_USER=rockuser -e POSTGRES_PASSWORD=rockpass -p 5433:5432 postgres:18

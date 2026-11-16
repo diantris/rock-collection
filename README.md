@@ -9,6 +9,7 @@ A personal catalogue of a rock, mineral and cabochon collection, built to help i
 - **Backend:** Java 25, Spring Boot 4, Spring Data JPA, Flyway, Maven (wrapper included)
 - **Frontend:** Next.js 16, React 19, MUI 9, TypeScript
 - **Database:** PostgreSQL 18 (via Docker)
+- **Hosting:** the app's files and HTTPS by Caddy, on one small cloud VM that updates itself from the images CI publishes ([deploy/](deploy/README.md))
 - **Tests:** JUnit 5 + Testcontainers (backend), Playwright (end-to-end)
 
 ## Features
@@ -19,6 +20,9 @@ A personal catalogue of a rock, mineral and cabochon collection, built to help i
 - Reference list of materials with type, family, mineral group and crystal system
 - Photos: resized, stripped of EXIF/GPS metadata and stored in the public site's GitHub repo, with a table thumbnail and a swipeable gallery
 - A "Publish" button that generates a static public site on GitHub Pages, with one global choice of which fields to show (private notes are never published)
+- An optional message box on each public page, so experts without any account can send the owner a private note ([scripts/message-box](scripts/README.md))
+
+The public site: <https://diantris.github.io/rock-collection-page/>
 
 ## Getting Started
 
@@ -38,6 +42,8 @@ Photos are stored in the public site's repo ([diantris/rock-collection-page](htt
 docker compose up --build
 ```
 
+If Compose refuses to build (seen on Windows with newer Docker versions), build the two images with plain `docker build -t rock-collection-api ./rock-collection-backend` and `docker build -t rock-collection-frontend ./rock-collection-frontend`, then `docker compose up -d --no-build`.
+
 - Frontend: <http://localhost:3000>
 - API: <http://localhost:8080/api/specimens>
 - PostgreSQL: `localhost:5432` (user `rockuser`, password `rockpass`, db `rockdb` — local development only)
@@ -56,6 +62,12 @@ corepack yarn install
 corepack yarn dev                          # frontend on :3000
 corepack yarn test:e2e                     # Playwright tests (full stack must be running)
 ```
+
+## Tests and deployment
+
+Every pull request runs the backend tests, the frontend typecheck and build, and builds both Docker images ([ci.yml](.github/workflows/ci.yml)). A merge to `master` publishes the images, and the VM picks them up within five minutes. [deploy/README.md](deploy/README.md) is the step-by-step guide to setting up such a VM.
+
+The app has no login: it's meant to be reachable only from trusted addresses (a firewall rule), so don't expose it to the internet as it is.
 
 ## Useful Commands
 

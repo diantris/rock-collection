@@ -15,6 +15,21 @@ async function deleteSpecimensNamed(request: APIRequestContext, prefix: string) 
   for (const s of page.content) if (s.name.startsWith(prefix)) await request.delete(`${API}/specimens/${s.id}`);
 }
 
+test('The keyboard opens a specimen’s details: its name is a button', async ({ page, request }) => {
+  const specimen = await createSpecimen(request, { name: `Keyboard test ${Date.now()}` });
+  try {
+    await page.goto('/');
+    await page.getByRole('button', { name: '#' }).click();
+    await page.getByRole('button', { name: '#' }).click(); // newest first
+    const name = page.getByRole('button', { name: specimen.name, exact: true });
+    await name.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('dialog', { name: new RegExp(`#${specimen.id}`) })).toBeVisible();
+  } finally {
+    await request.delete(`${API}/specimens/${specimen.id}`);
+  }
+});
+
 test('Clicking a row opens the details; editing hardness with a decimal comma saves it', async ({ page, request }) => {
   const specimen = await createSpecimen(request, { name: `Form test ${Date.now()}`, marketName: 'Dalmatian Jasper' });
   try {
