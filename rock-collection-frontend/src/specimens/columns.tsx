@@ -34,6 +34,9 @@ export const ComponentChips: React.FC<{ components: Component[] }> = ({ componen
     </Stack>
   );
 
+/** Marks a stone that's no longer in the collection; goes before its name. */
+export const GoneChip: React.FC = () => <Chip size="small" variant="outlined" label="Gone" sx={{ mr: 1 }} />;
+
 export interface ColumnDef {
   id: string;
   label: string;
@@ -64,8 +67,8 @@ export const COLUMNS: ColumnDef[] = [
   },
   {
     id: 'name', label: 'Name', sortKey: 'name', defaultVisible: true, sticky: true, width: 220,
-    // The chip goes first, so it's always at the start of the name
-    render: s => s.gone ? <><Chip size="small" variant="outlined" label="Gone" sx={{ mr: 1 }} />{s.name}</> : s.name,
+    // The chip goes first, so it's always at the start of the name. (The table itself makes the name a button.)
+    render: s => s.gone ? <><GoneChip />{s.name}</> : s.name,
   },
   { id: 'whySpecial', label: 'Why it’s special', defaultVisible: false, width: 280, render: s => s.whySpecial ?? <Unknown text="—" /> },
   { id: 'marketName', label: 'Market name', sortKey: 'marketName', defaultVisible: true, width: 220, render: s => orUnknown(s.marketName) },
