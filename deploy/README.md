@@ -140,7 +140,7 @@ docker compose exec -T db psql -U rockuser -d rockdb -tAc "select count(*) from 
 docker compose start api
 rm ~/rockdb.dump
 ```
-The count should match your collection (363 as of Day 13). Delete `rockdb.dump` from your Desktop too: it contains your private notes and prices.
+The count should match the number of specimens in your PC's app, including any you added that day; the Publish dialog shows the total. Delete `rockdb.dump` from your Desktop too: it contains your private notes and prices.
 
 ### 10. Open it
 
