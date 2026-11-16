@@ -80,3 +80,14 @@ test('Other web sites can neither change nor read data through the browser', asy
   const app = new URL(process.env.FRONTEND_URL || 'http://localhost:3000').origin;
   expect((await preflight(app)).headers()['access-control-allow-origin']).toBe(app);
 });
+
+test('Behind an HTTPS proxy (the VM), the app’s own page may change data and other sites still may not', async ({ request }) => {
+  // What Caddy passes on from https://<name>.duckdns.org: plain HTTP inside, the browser's HTTPS in X-Forwarded-Proto.
+  // Day 14: without trusting that header the API took its own page for another site (403 "Invalid CORS request").
+  const pin = (origin: string) => request.put(`${API_BASE_URL}/specimens/999999/pinned`, {
+    data: { pinned: true },
+    headers: { Origin: origin, Host: 'rock-collection.example', 'X-Forwarded-Proto': 'https' },
+  });
+  expect((await pin('https://rock-collection.example')).status()).toBe(404); // past CORS; that specimen doesn't exist
+  expect((await pin('https://evil.example')).status()).toBe(403);
+});
