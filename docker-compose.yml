@@ -37,14 +37,14 @@ services:
     restart: unless-stopped
 
   frontend:
-    build:
-      context: ./rock-collection-frontend
-      args:
-        # Inlined into the browser bundle at build time; must be reachable from the browser
-        NEXT_PUBLIC_API_URL: http://localhost:8080
+    # The app's files served by Caddy, which passes /api/* on to the api service (one address for the browser)
+    build: ./rock-collection-frontend
     container_name: rockcollection-frontend
     ports:
-      - "3000:3000"
+      - "3000:80"
+    environment:
+      # Where Caddy finds the API; scenario 3 below points it at one running outside Docker
+      API_UPSTREAM: ${API_UPSTREAM:-api:8080}
     depends_on:
       - api
     restart: unless-stopped
@@ -55,5 +55,6 @@ volumes:
 # Usage scenarios:
 # 1. All in containers:            docker compose up --build
 # 2. DB + backend in containers:   docker compose up db api      (then: yarn dev in rock-collection-frontend)
-# 3. DB + frontend in containers:  docker compose up db frontend (then: ./mvnw spring-boot:run in rock-collection-backend)
+# 3. DB + frontend in containers:  API_UPSTREAM=host.docker.internal:8080 docker compose up db frontend
+#                                  (then: ./mvnw spring-boot:run in rock-collection-backend)
 # 4. Only DB in a container:       docker compose up db          (then run backend and frontend locally)

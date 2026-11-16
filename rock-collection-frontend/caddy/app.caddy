@@ -1,0 +1,16 @@
+# app.caddy - What the app's address serves, imported by Caddyfile (local) and vm.Caddyfile (the VM): the API under
+# /api/, everything else from the app's files. API_UPSTREAM is where the API listens (default: the compose service).
+encode zstd gzip
+
+handle /api/* {
+	reverse_proxy {$API_UPSTREAM:api:8080}
+}
+
+handle {
+	root * /srv
+	# File names under _next/static/ change with their content, so browsers may keep them; index.html is always asked
+	# for again (Caddy's ETag), so a new version shows on the next reload.
+	@hashed path /_next/static/*
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+	file_server
+}

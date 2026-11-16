@@ -1,0 +1,5 @@
+# Caddyfile - Local use (docker compose, the throwaway test stack): plain HTTP on port 80 inside the container.
+# The VM uses vm.Caddyfile instead (deploy/docker-compose.yml).
+:80 {
+	import /etc/caddy/app.caddy
+}

@@ -1,3 +1,5 @@
-# Shell scripts run inside Linux containers and must keep LF endings
+# Scripts and configs that run on Linux (Docker images, the cloud VM) keep LF line endings, also in Windows checkouts.
 mvnw text eol=lf
 *.sh text eol=lf
+*.caddy text eol=lf
+*Caddyfile text eol=lf

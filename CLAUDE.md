@@ -6,7 +6,7 @@ Guidance for Claude Code when working in this repository.
 
 A personal catalogue of the owner's specimen collection (well over 200 items, and growing). It has two parts:
 
-1. **A private management app** (DB + API + UI) for the owner and their husband. It shows a paged, sortable table, each row with **one** thumbnail photo, and has add/edit/delete. It will be hosted on **GCP**, with access restricted to the owner's static IP. Because the network restriction is the access control, there's no in-app authentication.
+1. **A private management app** (DB + API + UI) for the owner and their husband. It shows a paged, sortable table, each row with **one** thumbnail photo, and has add/edit/delete. It's hosted on a free **GCP** VM (`deploy/`, Day 14), reachable only from the owner's home IP (every device at home, nothing else). Because the network restriction is the access control, there's no in-app authentication.
 2. **A public static site generator.** A service that exports the collection, with **all** photos per specimen, to a static site deployed on **GitHub Pages**.
 
 The main purpose of the public site is **crowd-sourced identification**: the owner shares it with geologists and other specialists and asks for their opinions. So:
@@ -29,12 +29,12 @@ The main purpose of the public site is **crowd-sourced identification**: the own
 ### Publishing
 
 - **Where the site lives:** a **separate public GitHub repo**, [`diantris/rock-collection-page`](https://github.com/diantris/rock-collection-page) (branch `main`, served at <https://diantris.github.io/rock-collection-page/>). It holds the README, the uploaded photos (`photos/{specimenId}/…`) and the generated site (`index.html`, `specimens/{id}/index.html`, `assets/`, `.nojekyll`).
-- **This repo is public too.** The `rockuser` / `rockpass` credentials in it are local-dev defaults only. Real deployments (GCP) must use different credentials supplied through env vars or Secret Manager. Never commit real secrets, tokens or the owner's personal data here.
+- **This repo is public too.** The `rockuser` / `rockpass` credentials in it are local-dev defaults only. The VM uses a generated database password in its gitignored `deploy/.env`. Never commit real secrets, tokens or the owner's personal data here.
 - **How it's triggered:** a **"Publish" button in the private app**. No local scripts are involved.
 - **What publish does:** the backend regenerates the whole site (static HTML/CSS/JS, no build step) from the current DB state. It pushes the result as **one commit** to the Pages repo through the GitHub API (the Git Data API: create a tree, then a commit, then update the ref), not one commit per file. Unchanged files are left out, and if nothing changed no commit is made.
 - **Repeated publishes:** publishing again replaces the generated pages (pages of specimens that are no longer public are deleted) but leaves the photos and the README alone.
 - **GitHub Pages deploys can lag.** GitHub queues a "pages build and deployment" run per commit; usually about a minute, sometimes several. The app says so after publishing.
-- **GitHub token:** a fine-grained personal access token scoped to the Pages repo only (permission *Contents: Read and write*; *Metadata: Read-only* is added automatically). Locally it lives in the gitignored root `.env` (`GITHUB_TOKEN=…`, template in `.env.example`), which `docker compose` passes to the API; on GCP it will come from Secret Manager. Never commit it, and never ask the owner to paste it into the chat.
+- **GitHub token:** a fine-grained personal access token scoped to the Pages repo only (permission *Contents: Read and write*; *Metadata: Read-only* is added automatically). Locally it lives in the gitignored root `.env` (`GITHUB_TOKEN=…`, template in `.env.example`), which `docker compose` passes to the API; on the VM it's a separate token in `deploy/.env` (see Deployment). Never commit it, and never ask the owner to paste it into the chat.
 
 ### Public site content
 
@@ -55,7 +55,7 @@ Keep data entry **low-friction**: sensible defaults, few required fields, no lon
 - **Provenance:** where or from whom it was acquired, the **seller's name** for it (kept separately from the actual identity), locality, and acquisition date.
 - **Almost every field is optional.** The UI, API and export must handle missing data gracefully: show "unknown", don't fail validation, and don't drop rows.
 
-## Current state (as of Day 12)
+## Current state (as of Day 14)
 
 **The collection is seeded:** 363 specimens (#1–#363) were bulk-imported from the owner's photo folders on Day 11, with all 727 photos uploaded. Every component from that import is a TENTATIVE guess made from the folder name, and the owner is refining them in the app. Treat this local DB as the owner's real data (see Commands).
 
@@ -74,14 +74,14 @@ Keep data entry **low-friction**: sensible defaults, few required fields, no lon
 
 **Not built yet:**
 - photo captions in the UI (the column exists, nothing edits it)
-- GCP deployment
+- the GCP VM itself: the repo side is ready (Day 14: `deploy/`, CI, the plain-files frontend), and the owner is setting up the account and VM by following `deploy/README.md`. Once the database has moved there, **the VM holds the real data** and the PC's app is only a test copy without a token
 
 **Agreed roadmap:**
 1. ~~New specimen data model~~ (done, Day 7)
 2. ~~Full add/edit forms and the Material You restyle~~ (done, Day 7)
 3. ~~Thumbnail upload and the photo pipeline~~ (done, Day 8)
 4. ~~Static site export with a gallery~~ (done, Day 8)
-5. GCP deployment
+5. GCP deployment (repo side done Day 14; the VM is being set up)
 
 ## Architecture
 
@@ -91,7 +91,7 @@ Monorepo with three Docker Compose services (`docker-compose.yml`), plus `script
 |------------|-----------------------------|-----------------------------------------------------------------------|------|
 | `db`       | –                           | PostgreSQL 18 (`rockdb` / `rockuser` / `rockpass`, local-dev only)    | 5432 |
 | `api`      | `rock-collection-backend/`  | Java 25 (LTS), Spring Boot 4.1, Spring Data JPA / Hibernate, Flyway, Maven wrapper | 8080 |
-| `frontend` | `rock-collection-frontend/` | Next.js 16 (pages router, `src/pages`), React 19, MUI 9, TypeScript 7, Yarn 1 | 3000 |
+| `frontend` | `rock-collection-frontend/` | Next.js 16 (pages router, `src/pages`) built as plain files (`output: 'export'`), served by Caddy, which also passes `/api/*` to the API; React 19, MUI 9, TypeScript 7, Yarn 1 | 3000 (container 80) |
 
 ### Data model (Flyway `V4__Specimen_model.sql`)
 
@@ -163,7 +163,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
   - validation failures: 400 with `{field: message}`
   - everything else: `{error: message}` with status 400, 403 (missing app header, see below), 404, 409, 413 (upload over 40 MB per file / 400 MB per request) or 503 (GitHub)
 - `config/` holds the browser protections. There's no login (the network is the access control), so other web sites open in the owner's browser must not be able to use the API:
-  - `WebConfig`: CORS for `/api/**` only from `rockcollection.cors.allowed-origins` (env `CORS_ALLOWED_ORIGINS`, default `http://localhost:3000`). **On GCP set it to the frontend's real address.**
+  - `WebConfig`: CORS for `/api/**` only from `rockcollection.cors.allowed-origins` (env `CORS_ALLOWED_ORIGINS`, default `http://localhost:3000`). It matters only for `yarn dev`: the Docker frontend and the VM serve the app and `/api` from one address, so the browser never makes a cross-site call.
   - `AppHeaderFilter`: every POST / PUT / PATCH / DELETE under `/api/` must carry `X-Rock-Collection` (any value), or it gets a 403. Browsers send a custom header cross-site only with CORS permission, so this also stops plain form POSTs from other sites (publish, photo upload). `api.ts` sends it; so must any script or `curl` that changes data.
 - **Service conventions:**
   - Entities never leave the service layer; controllers only see DTO records.
@@ -230,7 +230,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
   - **Extra colour roles:** M3 roles with no slot in MUI's palette (surface containers, outline, …) live under `theme.vars.palette.m3.*`.
   - **Component overrides:** pill buttons, 28px dialogs, 8px chips, tonal accordions.
   - **Typography:** Roboto via `next/font`, with the M3 type scale mapped onto the MUI variants (h4 = headline large, and so on).
-- API calls go in `specimens/api.ts`. It reads `NEXT_PUBLIC_API_URL`, which is baked in at build time (a Docker build arg) and defaults to `http://localhost:8080`. It throws `ApiError`, which carries any field errors. Every non-GET request carries the `X-Rock-Collection` header (see `AppHeaderFilter`).
+- API calls go in `specimens/api.ts`. It reads `NEXT_PUBLIC_API_URL`, which is baked in at build time: the Docker image builds with it empty, so calls go to `/api` on the page's own address (Caddy passes them on); unset (`yarn dev`) it's `http://localhost:8080`. **No server-side Next.js features** (`getServerSideProps`, API routes, `next/image` optimisation, middleware): the app is exported as plain files, and `next build` fails on them. It throws `ApiError`, which carries any field errors. Every non-GET request carries the `X-Rock-Collection` header (see `AppHeaderFilter`).
 - Types and enum display labels live in `specimens/types.ts`.
 - **MUI 9 removed system props** (`<Stack gap={2}>`, `<Box display="flex">`). Put style values in `sx` instead.
 - Playwright tests select elements by role and accessible name. Keep these names stable, or update `test/*.spec.ts` along with them:
@@ -253,7 +253,7 @@ Unknown specimens are the main use case. The owner records measurements and obse
 # Everything in Docker (needs Docker Desktop running)
 docker compose up --build         # broken on the owner's PC since Day 11, see Known issues; there use:
 docker build -t rock-collection-api ./rock-collection-backend
-docker build -t rock-collection-frontend --build-arg NEXT_PUBLIC_API_URL=http://localhost:8080 ./rock-collection-frontend
+docker build -t rock-collection-frontend ./rock-collection-frontend
 docker compose up -d --no-build
 docker compose up db api          # then run the frontend locally
 docker compose up db              # then run backend + frontend locally
@@ -268,7 +268,7 @@ docker compose down -v            # also wipe the DB volume
 corepack yarn install
 corepack yarn dev                 # dev server on :3000
 corepack yarn typecheck
-corepack yarn build && corepack yarn start
+corepack yarn build                # plain files in out/ (no `yarn start`: the Docker image serves them)
 
 # Playwright (from rock-collection-frontend/) — needs the full stack running
 corepack yarn test:e2e
@@ -284,10 +284,25 @@ docker run -d --rm --name rocktest-db -e POSTGRES_DB=rockdb -e POSTGRES_USER=roc
 # backend (rock-collection-backend/)
 GITHUB_TOKEN= SERVER_PORT=8081 SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/rockdb CORS_ALLOWED_ORIGINS=http://localhost:3001 ./mvnw spring-boot:run
 # frontend (rock-collection-frontend/)
-NEXT_PUBLIC_API_URL=http://localhost:8081 corepack yarn build && corepack yarn start -p 3001   # `yarn dev` crashed on this machine (invalid hook call) on Day 11
+# frontend: the real image, its Caddy passing /api to the test API (`yarn dev` crashed on this machine on Day 11)
+docker build -t rock-collection-frontend:test ./rock-collection-frontend
+docker run -d --rm --name rocktest-web -e API_UPSTREAM=host.docker.internal:8081 -p 3001:80 rock-collection-frontend:test
 FRONTEND_URL=http://localhost:3001 API_BASE_URL=http://localhost:8081/api corepack yarn test:e2e
-docker stop rocktest-db
+docker stop rocktest-web rocktest-db
 ```
+
+In Git Bash, prefix `docker` commands that contain container paths (`/etc/caddy/…`, `/tmp/…`) with `MSYS_NO_PATHCONV=1`, or it rewrites them into Windows paths.
+
+## Deployment (`deploy/`, Day 14)
+
+The private app runs on one free-tier **e2-micro** GCP VM (1 GB RAM, us-east1, Standard network tier). `deploy/README.md` is the owner's step-by-step guide (written for them: Cloud Shell and the console's SSH window, nothing installed locally); keep it in sync with the scripts.
+
+- **CI** (`.github/workflows/ci.yml`): every PR and push runs the backend tests (with Testcontainers), the frontend typecheck and build, and builds both images (checking both Caddyfiles and the VM's compose file). A push to `master` that passes publishes `ghcr.io/diantris/rock-collection-api:latest` and `-frontend:latest` (public packages; no secrets are ever in images). **A merge to master is a deploy.**
+- **The VM** has this repo cloned (`~/rock-collection`); cron runs `deploy/update.sh` every 5 minutes: `git pull` (so changes to `deploy/` reach the VM by themselves), pulls the two app images (never Postgres, which is updated by hand), `docker compose up -d`, and prints only when something was recreated (`journalctl -t rock-collection`). Also `duckdns.sh` (keeps `<name>.duckdns.org` on the VM's ephemeral IP) and a nightly `backup.sh` (`pg_dump` to a private Cloud Storage bucket, 30-day lifecycle).
+- **`deploy/docker-compose.yml`**: `db` (`postgres:18`, the Debian image like locally, so names sort the same; small buffers), `api`, `frontend` (the same image as locally, started with `/etc/caddy/vm.Caddyfile`: HTTPS for the DuckDNS name through the DuckDNS DNS challenge, since the firewall keeps Let's Encrypt out; HTTP/3 off). Settings and secrets come from `deploy/.env` (gitignored; `setup-vm.sh` creates it from `.env.example` with a generated `POSTGRES_PASSWORD`): `DUCKDNS_DOMAIN`, `DUCKDNS_TOKEN`, `GITHUB_TOKEN`, `BACKUP_BUCKET`.
+- **The frontend image** (`rock-collection-frontend/Dockerfile`): Caddy built with the `caddy-dns/duckdns` plugin, the exported app in `/srv`, and `caddy/`: `app.caddy` (shared: `/api/*` to `{$API_UPSTREAM:api:8080}`, everything else from `/srv`, `_next/static` cached as immutable, gzip/zstd), `Caddyfile` (local: plain `:80`) and `vm.Caddyfile`. About 160 MB instead of the old Next.js server's 5 GB image, and ~20–50 MB of RAM instead of ~90.
+- **Rehearsed locally on Day 14** with the VM's compose file, locally built images under the registry names and a dump of the real DB: all 13 migrations validated, 363 specimens / 727 photos, port 80 redirects to HTTPS; memory ~330 MB API + ~55 MB Postgres + ~16 MB Caddy.
+- **Access**: the GCP firewall allows ports 80/443 only from the home IP (`rock-collection-web` rule), SSH from the home IP and Google's IAP range. When the home IP changes, the app stops loading at home; the README has the two `gcloud` commands.
 
 ## Dev machine notes (owner's Windows PC)
 
@@ -302,7 +317,7 @@ docker stop rocktest-db
 - **`next.config.ts` lists `@material/material-color-utilities` in `transpilePackages`.** Version 0.4.0 has an ESM import without a file extension that Node can't resolve during SSR, which made `next build` fail inside Docker. Remove the workaround once upstream fixes it.
 - **The API image is tuned for the 1 GB / quarter-CPU GCP VM** (`JAVA_TOOL_OPTIONS` and `MALLOC_ARENA_MAX` in `rock-collection-backend/Dockerfile`; Tomcat threads, Hikari pool and compression in `application.properties`). Measured under those limits: ~210 MB idle, levelling off at ~560 MB under repeated large uploads, ~25 s startup. Keep `-Djdk.nio.maxCachedBufferSize`: without it the JDK keeps a per-thread off-heap buffer as large as the biggest upload read, and memory grew without end.
 - **Check the exit code of `docker compose build`.** A failed image build leaves the old container running, so tests silently run against stale code.
-- **`docker compose up --build` / `docker compose build` fail on the owner's PC** (Docker Compose v5.6, buildx 0.37, since Day 11). Compose now builds through buildx "bake", which stops with `additional privileges requested: pass "--allow=fs.read=rock-collection-frontend\\Dockerfile"`, a Windows path problem. `COMPOSE_BAKE=false` no longer turns bake off. Build both images with plain `docker build`, tagged with the names Compose uses (`rock-collection-api`, `rock-collection-frontend`, see Commands), then start them with `docker compose up -d --no-build`. The frontend needs `--build-arg NEXT_PUBLIC_API_URL=…`, because the compose file normally passes it. Try `docker compose up --build` again after Docker updates.
+- **`docker compose up --build` / `docker compose build` fail on the owner's PC** (Docker Compose v5.6, buildx 0.37, since Day 11). Compose now builds through buildx "bake", which stops with `additional privileges requested: pass "--allow=fs.read=rock-collection-frontend\\Dockerfile"`, a Windows path problem. `COMPOSE_BAKE=false` no longer turns bake off. Build both images with plain `docker build`, tagged with the names Compose uses (`rock-collection-api`, `rock-collection-frontend`, see Commands), then start them with `docker compose up -d --no-build`. Try `docker compose up --build` again after Docker updates.
 - **MUI `Dialog` only forwards `aria-labelledby` to the paper** (the element with `role="dialog"`). An `aria-label` on `<Dialog>` lands on the backdrop root, so pass it through `slotProps.paper` (as `PhotoGallery` does).
 - **While a dialog is open (or fading out), the rest of the page is `aria-hidden`.** Role queries outside it find nothing, so wait for the dialog to be gone, or use CSS locators.
 - **GitHub's API caches unauthenticated reads for about a minute.** A `contents/` lookup can still show a just-deleted file; check the tree of the latest commit instead.
@@ -321,7 +336,7 @@ docker stop rocktest-db
 - Backend:
   - Use the standard Maven layout, feature packages, and Java 25 features (records, `Math.clamp`, and so on).
   - Use **constructor injection**, not `@Autowired` fields.
-  - Put configuration in `application.properties`, overridden by env vars in Docker and on GCP.
+  - Put configuration in `application.properties`, overridden by env vars in Docker and on the VM.
   - Add JUnit 5 + Mockito tests for services, and `@WebMvcTest` tests for controllers.
 - Frontend:
   - Use TypeScript strict mode and MUI components, styled through `sx`.

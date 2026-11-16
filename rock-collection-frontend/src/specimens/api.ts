@@ -1,7 +1,8 @@
 // api.ts - Fetch-based client for the backend REST API
 import { Material, MaterialRequest, Order, Page, Photo, PublishFieldKey, PublishResult, PublishSettings, SpecimenDetail, SpecimenRequest, SpecimenSortKey, SpecimenSummary } from './types';
 
-// NEXT_PUBLIC_ variables are inlined into the browser bundle at build time
+// NEXT_PUBLIC_ variables are inlined into the browser bundle at build time. Empty (the Docker image) = the API is on
+// the page's own address, under /api (Caddy passes it on); unset (`yarn dev`) = the API on localhost:8080.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
 
 /** Error carrying the backend's message (or per-field validation messages). */
